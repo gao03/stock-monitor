@@ -16,7 +16,11 @@ import (
 )
 
 func main() {
-	systray.Run(onReady, utils.EmptyFunc)
+	systray.Run(onReady, func() {
+		if utils.Browser != nil {
+			defer utils.Browser.Close()
+		}
+	})
 }
 
 func onReady() {

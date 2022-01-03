@@ -11,11 +11,11 @@ import (
 	"time"
 )
 
-var BROWSER *rod.Browser
+var Browser *rod.Browser
 
 func RegisterUpdateStockFigure(url string, figureMenuItem *systray.MenuItem, updateTimeMenuItem *systray.MenuItem) {
-	if BROWSER == nil {
-		BROWSER = newBrowser()
+	if Browser == nil {
+		Browser = newBrowser()
 	}
 	NewTicker(1*time.Minute, func() {
 		updateStockFigure(url, figureMenuItem, updateTimeMenuItem)
@@ -49,8 +49,6 @@ func newBrowser() *rod.Browser {
 }
 
 func updateStockFigure(url string, figureMenuItem *systray.MenuItem, updateTimeMenuItem *systray.MenuItem) {
-	print("更新中")
-	println(url)
 	updateTimePrefix := "更新时间："
 	if CheckIsMarketClose() {
 		// 如果是闭市，那就只执行一次
@@ -61,7 +59,7 @@ func updateStockFigure(url string, figureMenuItem *systray.MenuItem, updateTimeM
 
 	updateTimeMenuItem.SetTitle("更新中...")
 
-	page := BROWSER.MustPage(url)
+	page := Browser.MustPage(url)
 
 	time.Sleep(5 * time.Second)
 

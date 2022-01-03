@@ -65,9 +65,6 @@ func FloatToStr(num float64) string {
 
 func CheckIsMarketClose() bool {
 	t := time.Now()
-	if t.Month() == 1 {
-		return false
-	}
 	if t.Weekday() == time.Saturday || t.Weekday() == time.Sunday {
 		return true
 	}
@@ -105,8 +102,4 @@ func On(c chan struct{}, callback func()) {
 			}
 		}
 	}()
-}
-
-func EmptyFunc() {
-
 }
