@@ -1,81 +1,118 @@
 package utils
 
 import (
+	"bytes"
 	"github.com/getlantern/systray"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/devices"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/utils"
+	"image"
 	"log"
-	"strings"
 	"time"
 )
 
 var Browser *rod.Browser
+var pageList = []*rod.Page{}
+var pageCount = 0
 
 func RegisterUpdateStockFigure(url string, figureMenuItem *systray.MenuItem, updateTimeMenuItem *systray.MenuItem) {
 	if Browser == nil {
 		Browser = newBrowser()
 	}
-	NewTicker(1*time.Minute, func() {
-		updateStockFigure(url, figureMenuItem, updateTimeMenuItem)
-	})
-}
-
-func newBrowser() *rod.Browser {
-	iPhoneX := devices.Device{
-		Capabilities: []string{
-			"touch",
-			"mobile",
-		},
-		Screen: devices.Screen{
-			DevicePixelRatio: 3,
-			Horizontal: devices.ScreenSize{
-				Height: 375,
-				Width:  812,
-			},
-			Vertical: devices.ScreenSize{
-				Height: 812,
-				Width:  375,
-			},
-		},
-		Title:     "iPhone X",
-		UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/86.0.4240.111",
-	}
-
-	launch := launcher.New().Bin("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome").MustLaunch()
-	browser := rod.New().ControlURL(launch).MustConnect().DefaultDevice(iPhoneX)
-	return browser
-}
-
-func updateStockFigure(url string, figureMenuItem *systray.MenuItem, updateTimeMenuItem *systray.MenuItem) {
-	updateTimePrefix := "更新时间："
-	if CheckIsMarketClose() {
-		// 如果是闭市，那就只执行一次
-		if strings.Contains(updateTimeMenuItem.String(), updateTimePrefix) {
-			return
-		}
-	}
 
 	updateTimeMenuItem.SetTitle("更新中...")
 
 	page := Browser.MustPage(url)
+	pageList = append(pageList, page)
+	pageCount++
 
 	time.Sleep(5 * time.Second)
 
-	screenshot := page.MustScreenshot()
-	image, err := utils.CropImage(screenshot, 0, 0, 520, 1125, 800)
+	if CheckIsMarketCloseDay() {
+		fetchNewScreenshot(page, figureMenuItem, updateTimeMenuItem)
+		// 如果是闭市，那就只执行一次
+		// 执行结束就关闭浏览器
+		defer func(Browser *rod.Browser) {
+			pageCount--
+			if pageCount == 0 && Browser != nil {
+				err := Browser.Close()
+				if err != nil {
+					println(err)
+				}
+				Browser = nil
+			}
+		}(Browser)
+	} else {
+		NewTicker(10*time.Second, func() {
+			fetchNewScreenshot(page, figureMenuItem, updateTimeMenuItem)
+		})
+		updateSelfFunc := func() {
+			RegisterUpdateStockFigure(url, figureMenuItem, updateTimeMenuItem)
+		}
+		On(figureMenuItem.ClickedCh, updateSelfFunc)
+		On(updateTimeMenuItem.ClickedCh, updateSelfFunc)
+	}
+}
+
+func newBrowser() *rod.Browser {
+	device := devices.Device{
+		Capabilities: []string{
+			"touch",
+			"desktop",
+		},
+		Screen: devices.Screen{
+			DevicePixelRatio: 3,
+			Horizontal: devices.ScreenSize{
+				Height: 1024,
+				Width:  1024,
+			},
+			Vertical: devices.ScreenSize{
+				Height: 1024,
+				Width:  1024,
+			},
+		},
+		Title:     "IPad",
+		UserAgent: "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1",
+	}
+	launch := launcher.New().Bin("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome").Headless(true).MustLaunch()
+	browser := rod.New().ControlURL(launch).MustConnect().DefaultDevice(device)
+	return browser
+}
+
+func fetchNewScreenshot(page *rod.Page, figureMenuItem *systray.MenuItem, updateTimeMenuItem *systray.MenuItem) {
+	screenshot, err := elementScreenshot(page.MustElement(".snbchart"))
 	if err != nil {
 		log.Fatalln("err in image", err)
 	} else {
-		figureMenuItem.SetIconWithSize(image, 375, 240)
+		screenshotConfig, _, err := image.DecodeConfig(bytes.NewBuffer(screenshot))
+		width, height := 500.0, 300.0
+		if err == nil {
+			height = float64(screenshotConfig.Height) * (width / float64(screenshotConfig.Width))
+		}
+		figureMenuItem.SetIconWithSize(screenshot, uint32(width), uint32(height))
 		updateTime := time.Now().Format("15:04:05")
-		updateTimeMenuItem.SetTitle(updateTimePrefix + updateTime)
+		updateTimeMenuItem.SetTitle("更新时间：" + updateTime)
 	}
+}
 
-	updateSelfFunc := func() {
-		updateStockFigure(url, figureMenuItem, updateTimeMenuItem)
+func elementScreenshot(element *rod.Element) ([]byte, error) {
+	page := element.Page()
+	screenshot := page.MustScreenshot()
+	pageBox := page.MustElement("body").MustShape().Box()
+
+	screenshotConfig, _, err := image.DecodeConfig(bytes.NewBuffer(screenshot))
+	if err != nil {
+		log.Fatalln(err)
+		return nil, err
 	}
-	On(figureMenuItem.ClickedCh, updateSelfFunc)
-	On(updateTimeMenuItem.ClickedCh, updateSelfFunc)
+	box := element.MustShape().Box()
+	diff := float64(screenshotConfig.Width) / pageBox.Width
+
+	return utils.CropImage(screenshot, 0,
+		int(box.X*diff),
+		int(box.Y*diff),
+		int(box.Width*diff),
+		int(box.Height*diff),
+	)
 }

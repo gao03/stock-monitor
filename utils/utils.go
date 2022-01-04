@@ -60,10 +60,24 @@ func MapStr(vs []string, f func(string) string) []string {
 }
 
 func FloatToStr(num float64) string {
-	return strconv.FormatFloat(num, 'f', 2, 64)
+	f := strconv.FormatFloat(num, 'f', 3, 64)
+	if f[len(f)-1] == '0' {
+		return f[:len(f)-1]
+	}
+	return f
 }
 
 func CheckIsMarketClose() bool {
+	if CheckIsMarketCloseDay() {
+		return true
+	}
+
+	t := time.Now()
+	minute := t.Hour()*60 + t.Minute()
+	return minute > 11*60+40 && minute < 13*60
+}
+
+func CheckIsMarketCloseDay() bool {
 	t := time.Now()
 	if t.Weekday() == time.Saturday || t.Weekday() == time.Sunday {
 		return true
@@ -72,7 +86,7 @@ func CheckIsMarketClose() bool {
 	minute := t.Hour()*60 + t.Minute()
 
 	// 9.15 - 11:40, 13:00-15:10 中间跑，其他时间休息
-	if minute < 9*60+15 || (minute > 11*60+40 && minute < 13*60) || minute > 15*60+10 {
+	if minute < 9*60+15 || minute > 15*60+10 {
 		return true
 	}
 

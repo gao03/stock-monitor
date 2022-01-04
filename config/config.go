@@ -11,11 +11,27 @@ var FILE_NAME = utils.ExpandUser("~/.config/StockMonitor.json")
 
 var LATEST_CONFIG *[]StockConfig
 
+type ShowInTitleType bool
+
+func (e *ShowInTitleType) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	if s == "" {
+		*e = true
+	} else {
+		*e = s == "true"
+	}
+	return nil
+}
+
 type StockConfig struct {
-	Code      string  `json:"code"`
-	CostPrice float64 `json:"cost"`
-	Position  float64 `json:"position"`
-	Name      string  `json:"name"`
+	Code        string  `json:"code"`
+	CostPrice   float64 `json:"cost"`
+	Position    float64 `json:"position"`
+	Name        string  `json:"name"`
+	ShopInTitle bool    `json:"showInTitle"`
 }
 
 func ReadConfig() *[]StockConfig {

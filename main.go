@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
 	"log"
@@ -8,6 +9,8 @@ import (
 	"monitor/config"
 	"monitor/entity"
 	"monitor/utils"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"strings"
@@ -15,7 +18,16 @@ import (
 	"time"
 )
 
+var titleLength = 0
+
 func main() {
+	go func() {
+		ip := "0.0.0.0:6060"
+		if err := http.ListenAndServe(ip, nil); err != nil {
+			fmt.Printf("start pprof failed on %s\n", ip)
+			//os.Exit(1)
+		}
+	}()
 	systray.Run(onReady, func() {
 		if utils.Browser != nil {
 			defer utils.Browser.Close()
@@ -142,11 +154,13 @@ func updateSubMenuTitle(stock *entity.Stock) {
 func generateTitle(flag *bool, stockList []*entity.Stock) string {
 	currentTotal := 0.0
 	totalCost := 0.0
-	var priceList = make([]string, len(stockList))
-	for idx, stock := range stockList {
+	var priceList []string
+	for _, stock := range stockList {
 		currentTotal += stock.CurrentInfo.Price * stock.Config.Position
 		totalCost += stock.Config.CostPrice * stock.Config.Position
-		priceList[idx] = utils.FloatToStr(stock.CurrentInfo.Price)
+		if stock.Config.ShopInTitle {
+			priceList = append(priceList, utils.FloatToStr(stock.CurrentInfo.Price))
+		}
 	}
 	var result = "●"
 	if *flag {
@@ -161,6 +175,15 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 
 	// title 的格式：●闪烁标识 当前盈亏比 股票价格1 | 股票价格2
 	result = result + strings.Join(priceList, " | ")
+
+	if titleLength < len(result) {
+		titleLength = len(result)
+	} else {
+		diff := titleLength - len(result)
+		for i := 0; i < diff; i++ {
+			result += " "
+		}
+	}
 
 	return result
 }
@@ -187,13 +210,38 @@ func checkAndCompleteConfig() {
 	infoMap := api.QueryStockInfo(codeList)
 
 	var validStock []config.StockConfig
+
+	var bondStockCode []string
+
 	for _, stock := range *stockList {
 		info, ok := infoMap[stock.Code]
+		// 如果是可转债，并且正股的code 不在 map 里面，那就算加到列表
+		if info.StockCode != "" {
+			if _, ok2 := infoMap[info.StockCode]; !ok2 {
+				bondStockCode = append(bondStockCode, info.StockCode)
+			}
+		}
 		if !ok {
 			continue
 		}
+		if stock.Name == "" {
+			stock.ShopInTitle = true
+		}
 		stock.Name = info.Name
 		validStock = append(validStock, stock)
+	}
+
+	if len(bondStockCode) != 0 {
+		infoMap = api.QueryStockInfo(bondStockCode)
+		for _, info := range infoMap {
+			validStock = append(validStock, config.StockConfig{
+				Code:        info.Code,
+				CostPrice:   0,
+				Position:    0,
+				Name:        info.Name,
+				ShopInTitle: false,
+			})
+		}
 	}
 
 	config.WriteConfig(&validStock)

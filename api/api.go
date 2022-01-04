@@ -23,13 +23,14 @@ type StockCurrentInfo struct {
 	HighestPrice float64 `json:"f15"`
 	OpenPrice    float64 `json:"f16"`
 	BasePrice    float64 `json:"f18"`
+	StockCode    string  `json:"f232"` // 转债对应的正股
 }
 
 func QueryStockInfo(codeList []string) map[string]StockCurrentInfo {
 	var codeStr = strings.Join(utils.MapStr(codeList, func(s string) string {
 		return "0." + s + "," + "1." + s
 	}), ",")
-	url := "https://push2.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18&fltt=2&secids=" + codeStr
+	url := "https://push2.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18,f232&fltt=2&secids=" + codeStr
 	var response ApiResponse
 	var result = make(map[string]StockCurrentInfo)
 	err := gout.GET(url).Debug(false).BindJSON(&response).Do()
