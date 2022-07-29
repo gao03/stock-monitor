@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
 	"log"
@@ -19,11 +20,57 @@ import (
 var titleLength = 0
 
 func main() {
+	err := background("/tmp/daemon.log")
+	if err != nil {
+		log.Fatal("启动子进程失败1:", err)
+	}
+
 	systray.Run(onReady, func() {
 		if utils.Browser != nil {
 			defer utils.Browser.Close()
 		}
 	})
+}
+
+//@link https://zhuanlan.zhihu.com/p/146192035
+func background(logFile string) error {
+	envName := "XW_DAEMON" //环境变量名称
+	envValue := "SUB_PROC" //环境变量值
+
+	val := os.Getenv(envName) //读取环境变量的值,若未设置则为空字符串
+	if val == envValue {      //监测到特殊标识, 判断为子进程,不再执行后续代码
+		return nil
+	}
+
+	/*以下是父进程执行的代码*/
+
+	//因为要设置更多的属性, 这里不使用`exec.Command`方法, 直接初始化`exec.Cmd`结构体
+	cmd := &exec.Cmd{
+		Path: os.Args[0],
+		Args: os.Args,      //注意,此处是包含程序名的
+		Env:  os.Environ(), //父进程中的所有环境变量
+	}
+
+	//为子进程设置特殊的环境变量标识
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", envName, envValue))
+
+	//若有日志文件, 则把子进程的输出导入到日志文件
+	if logFile != "" {
+		stdout, err := os.OpenFile(logFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			log.Fatal(os.Getpid(), ": 打开日志文件错误:", err)
+		}
+		cmd.Stderr = stdout
+		cmd.Stdout = stdout
+	}
+
+	//异步启动子进程
+	err := cmd.Start()
+	if err != nil {
+		log.Fatal("启动子进程失败2:", err)
+	}
+	os.Exit(0)
+	return nil
 }
 
 func onReady() {
