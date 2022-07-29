@@ -51,9 +51,9 @@ func checkToJson(s []byte, err error) string {
 	return string(s)
 }
 
-func MapStr(vs []string, f func(string) string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
+func MapToStr[T interface{} | int | float64](vs *[]T, f func(T) string) []string {
+	vsm := make([]string, len(*vs))
+	for i, v := range *vs {
 		vsm[i] = f(v)
 	}
 	return vsm

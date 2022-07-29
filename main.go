@@ -6,6 +6,7 @@ import (
 	"log"
 	"monitor/api"
 	"monitor/config"
+	"monitor/constant/StockType"
 	"monitor/entity"
 	"monitor/utils"
 	"os"
@@ -91,7 +92,7 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		codeList[i] = v.Code
 	}
 
-	infoMap := api.QueryStockInfo(codeList)
+	infoMap := api.QueryStockInfo(stockConfigList)
 
 	var stockList []*entity.Stock
 	for _, item := range *stockConfigList {
@@ -106,10 +107,12 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 			})
 			codeToMenuItemMap[item.Code] = menu
 
-			figureMenuItem := addSubMenuItem(menu, "", nil)
-			updateTimeMenuItem := addSubMenuItem(menu, "查询中...", nil)
+			if item.EnableRealTimePic {
+				figureMenuItem := addSubMenuItem(menu, "", nil)
+				updateTimeMenuItem := addSubMenuItem(menu, "查询中...", nil)
 
-			go utils.RegisterUpdateStockFigure(GenerateXueqiuUrl(&current), figureMenuItem, updateTimeMenuItem)
+				go utils.RegisterUpdateStockFigure(GenerateXueqiuUrl(&current), figureMenuItem, updateTimeMenuItem)
+			}
 		}
 		stock := entity.Stock{
 			Code:        item.Code,
@@ -125,12 +128,16 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 
 func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
 	url := "https://xueqiu.com/S/S"
-	if current.Type == 0 {
-		url += "Z"
-	} else {
-		url += "H"
+	typeStr := ""
+	switch current.Type {
+	case StockType.SHEN_ZHEN:
+		typeStr = "Z"
+	case StockType.SHANG_HAI:
+		typeStr = "H"
+	default:
+		typeStr = "S"
 	}
-	return url + current.Code
+	return url + typeStr + current.Code
 }
 
 func updateSubMenuTitle(stock *entity.Stock) {
@@ -197,20 +204,13 @@ func checkAndCompleteConfig() {
 	for i, v := range *stockList {
 		codeList[i] = v.Code
 	}
-	infoMap := api.QueryStockInfo(codeList)
+	infoMap := api.QueryStockInfo(stockList)
 
 	var validStock []config.StockConfig
 
-	var bondStockCode []string
-
 	for _, stock := range *stockList {
 		info, ok := infoMap[stock.Code]
-		// 如果是可转债，并且正股的code 不在 map 里面，那就算加到列表
-		if info.StockCode != "" {
-			if _, ok2 := infoMap[info.StockCode]; !ok2 {
-				bondStockCode = append(bondStockCode, info.StockCode)
-			}
-		}
+
 		if !ok {
 			continue
 		}
@@ -218,20 +218,8 @@ func checkAndCompleteConfig() {
 			stock.ShopInTitle = true
 		}
 		stock.Name = info.Name
+		stock.Type = &info.Type
 		validStock = append(validStock, stock)
-	}
-
-	if len(bondStockCode) != 0 {
-		infoMap = api.QueryStockInfo(bondStockCode)
-		for _, info := range infoMap {
-			validStock = append(validStock, config.StockConfig{
-				Code:        info.Code,
-				CostPrice:   0,
-				Position:    0,
-				Name:        info.Name,
-				ShopInTitle: false,
-			})
-		}
 	}
 
 	config.WriteConfig(&validStock)

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/devices"
@@ -81,6 +82,11 @@ func newBrowser() *rod.Browser {
 }
 
 func fetchNewScreenshot(page *rod.Page, figureMenuItem *systray.MenuItem, updateTimeMenuItem *systray.MenuItem) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
 	screenshot, err := elementScreenshot(page.MustElement(".snbchart"))
 	if err != nil {
 		log.Fatalln("err in image", err)
@@ -98,8 +104,19 @@ func fetchNewScreenshot(page *rod.Page, figureMenuItem *systray.MenuItem, update
 
 func elementScreenshot(element *rod.Element) ([]byte, error) {
 	page := element.Page()
-	screenshot := page.MustScreenshot()
-	pageBox := page.MustElement("body").MustShape().Box()
+	screenshot, err := page.Screenshot(false, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyElement, err := page.Element("body")
+	if err != nil {
+		return nil, err
+	}
+	bodyShape, err := bodyElement.Shape()
+	if err != nil {
+		return nil, err
+	}
+	pageBox := bodyShape.Box()
 
 	screenshotConfig, _, err := image.DecodeConfig(bytes.NewBuffer(screenshot))
 	if err != nil {
