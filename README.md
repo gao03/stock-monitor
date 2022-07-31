@@ -11,3 +11,18 @@
 | name              | string |  否   |  上证指数  |                     股票名称                      |   
 | showInTitle       |  bool  |  否   |  true  |               是否展示在菜单栏，默认 true                |
 | enableRealTimePic |  bool  |  否   |  true  |             是否启用实时信息图片，默认 false。              |
+
+示例：
+```json
+[
+  {
+    "code": "000001",
+    "type": 1,
+    "cost": 0,
+    "position": 0,
+    "name": "上证指数",
+    "showInTitle": true,
+    "enableRealTimePic": true
+  }
+]
+```
