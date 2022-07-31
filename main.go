@@ -67,9 +67,10 @@ func background(logFile string) error {
 	//异步启动子进程
 	err := cmd.Start()
 	if err != nil {
-		log.Fatal("启动子进程失败2:", err)
+		log.Println("启动子进程失败2:", err)
+	} else {
+		os.Exit(0)
 	}
-	os.Exit(0)
 	return nil
 }
 
