@@ -34,6 +34,12 @@ func main() {
 
 //@link https://zhuanlan.zhihu.com/p/146192035
 func background(logFile string) error {
+	executeFilePath, err1 := os.Executable()
+	if err1 != nil {
+		log.Println("Executable error", err1)
+		executeFilePath = os.Args[0]
+	}
+
 	envName := "XW_DAEMON" //环境变量名称
 	envValue := "SUB_PROC" //环境变量值
 
@@ -46,7 +52,7 @@ func background(logFile string) error {
 
 	//因为要设置更多的属性, 这里不使用`exec.Command`方法, 直接初始化`exec.Cmd`结构体
 	cmd := &exec.Cmd{
-		Path: os.Args[0],
+		Path: executeFilePath,
 		Args: os.Args,      //注意,此处是包含程序名的
 		Env:  os.Environ(), //父进程中的所有环境变量
 	}
