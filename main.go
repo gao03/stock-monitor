@@ -195,7 +195,7 @@ func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
 }
 
 func updateSubMenuTitle(stock *entity.Stock) {
-	var result = stock.CurrentInfo.Name + "\t" +
+	var result = stock.CurrentInfo.Name + "\t  " +
 		utils.FloatToStr(stock.CurrentInfo.Price) + "\t" +
 		utils.FloatToStr(stock.CurrentInfo.Diff)
 

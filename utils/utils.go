@@ -3,10 +3,10 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -60,7 +60,7 @@ func MapToStr[T interface{} | int | float64](vs *[]T, f func(T) string) []string
 }
 
 func FloatToStr(num float64) string {
-	f := strconv.FormatFloat(num, 'f', 3, 64)
+	f := fmt.Sprintf("%6.2f", num)
 	if f[len(f)-1] == '0' {
 		return f[:len(f)-1]
 	}
