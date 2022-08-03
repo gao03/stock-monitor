@@ -60,11 +60,7 @@ func MapToStr[T interface{} | int | float64](vs *[]T, f func(T) string) []string
 }
 
 func FloatToStr(num float64) string {
-	f := fmt.Sprintf("%6.2f", num)
-	if f[len(f)-1] == '0' {
-		return f[:len(f)-1]
-	}
-	return f
+	return fmt.Sprintf("%6.2f", num)
 }
 
 func CheckIsMarketClose() bool {

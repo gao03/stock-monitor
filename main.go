@@ -20,9 +20,9 @@ import (
 var titleLength = 0
 
 func main() {
-	err := background("/tmp/daemon.log")
-	if err != nil {
-		log.Fatal("启动子进程失败1:", err)
+	if len(os.Args) == 1 {
+		// 如果传了参数，就不用后台运行的模式
+		background("/tmp/stock-monitor-daemon.log")
 	}
 
 	systray.Run(onReady, func() {
@@ -33,7 +33,7 @@ func main() {
 }
 
 //@link https://zhuanlan.zhihu.com/p/146192035
-func background(logFile string) error {
+func background(logFile string) {
 	executeFilePath, err1 := os.Executable()
 	if err1 != nil {
 		log.Println("Executable error", err1)
@@ -45,7 +45,7 @@ func background(logFile string) error {
 
 	val := os.Getenv(envName) //读取环境变量的值,若未设置则为空字符串
 	if val == envValue {      //监测到特殊标识, 判断为子进程,不再执行后续代码
-		return nil
+		return
 	}
 
 	/*以下是父进程执行的代码*/
@@ -77,7 +77,7 @@ func background(logFile string) error {
 	} else {
 		os.Exit(0)
 	}
-	return nil
+	return
 }
 
 func onReady() {
@@ -209,8 +209,8 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 	for _, stock := range stockList {
 		currentTotal += stock.CurrentInfo.Price * stock.Config.Position
 		totalCost += stock.Config.CostPrice * stock.Config.Position
-		if stock.Config.ShopInTitle {
-			priceList = append(priceList, utils.FloatToStr(stock.CurrentInfo.Price))
+		if *stock.Config.ShopInTitle {
+			priceList = append(priceList, strings.Trim(utils.FloatToStr(stock.CurrentInfo.Price), " "))
 		}
 	}
 	var result = "●"
@@ -268,8 +268,8 @@ func checkAndCompleteConfig() {
 		if !ok {
 			continue
 		}
-		if stock.Name == "" {
-			stock.ShopInTitle = true
+		if stock.ShopInTitle == nil {
+			*stock.ShopInTitle = true
 		}
 		stock.Name = info.Name
 		stock.Type = &info.Type

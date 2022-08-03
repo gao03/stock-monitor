@@ -32,7 +32,7 @@ type StockConfig struct {
 	CostPrice         float64 `json:"cost"`
 	Position          float64 `json:"position"`
 	Name              string  `json:"name"`
-	ShopInTitle       bool    `json:"showInTitle"`
+	ShopInTitle       *bool   `json:"showInTitle"`
 	EnableRealTimePic bool    `json:"enableRealTimePic"`
 }
 
