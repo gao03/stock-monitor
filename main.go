@@ -195,9 +195,14 @@ func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
 }
 
 func updateSubMenuTitle(stock *entity.Stock) {
+	var positionDiff = ""
+	if stock.Config.Position > 0 {
+		positionDiff = "\t" + utils.FloatToStr((stock.CurrentInfo.Price/stock.Config.CostPrice-1)*100)
+	}
 	var result = stock.CurrentInfo.Name + "\t  " +
-		utils.FloatToStr(stock.CurrentInfo.Price) + "\t" +
-		utils.FloatToStr(stock.CurrentInfo.Diff)
+		utils.FormatPrice(stock.CurrentInfo.Price) + "\t" +
+		utils.FloatToStr(stock.CurrentInfo.Diff) +
+		positionDiff
 
 	stock.MenuItem.SetTitle(result)
 }
@@ -209,8 +214,8 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 	for _, stock := range stockList {
 		currentTotal += stock.CurrentInfo.Price * stock.Config.Position
 		totalCost += stock.Config.CostPrice * stock.Config.Position
-		if *stock.Config.ShopInTitle {
-			priceList = append(priceList, strings.Trim(utils.FloatToStr(stock.CurrentInfo.Price), " "))
+		if stock.Config.ShowInTitle != nil && *stock.Config.ShowInTitle {
+			priceList = append(priceList, utils.FormatPrice(stock.CurrentInfo.Price))
 		}
 	}
 	var result = "●"
@@ -268,8 +273,8 @@ func checkAndCompleteConfig() {
 		if !ok {
 			continue
 		}
-		if stock.ShopInTitle == nil {
-			*stock.ShopInTitle = true
+		if stock.ShowInTitle == nil {
+			*stock.ShowInTitle = true
 		}
 		stock.Name = info.Name
 		stock.Type = &info.Type
