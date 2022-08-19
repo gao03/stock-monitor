@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
+	"github.com/samber/lo"
 	"log"
 	"monitor/api"
 	"monitor/config"
@@ -141,11 +142,6 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		return
 	}
 
-	codeList := make([]string, len(*stockConfigList))
-	for i, v := range *stockConfigList {
-		codeList[i] = v.Code
-	}
-
 	infoMap := api.QueryStockInfo(stockConfigList)
 
 	var stockList []*entity.Stock
@@ -181,15 +177,15 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 }
 
 func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
-	url := "https://xueqiu.com/S/S"
+	url := "https://xueqiu.com/S/"
 	typeStr := ""
 	switch current.Type {
 	case StockType.SHEN_ZHEN:
-		typeStr = "Z"
+		typeStr = "SZ"
 	case StockType.SHANG_HAI:
-		typeStr = "H"
+		typeStr = "SH"
 	default:
-		typeStr = "S"
+		typeStr = ""
 	}
 	return url + typeStr + current.Code
 }
@@ -197,7 +193,7 @@ func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
 func updateSubMenuTitle(stock *entity.Stock) {
 	var positionDiff = ""
 	if stock.Config.Position > 0 {
-		positionDiff = "\t" + utils.FloatToStr((stock.CurrentInfo.Price/stock.Config.CostPrice-1)*100)
+		positionDiff = "\t" + utils.CalcReturn(stock.Config.CostPrice, stock.CurrentInfo.Price)
 	}
 	var result = stock.CurrentInfo.Name + "\t  " +
 		utils.FormatPrice(stock.CurrentInfo.Price) + "\t" +
@@ -211,22 +207,18 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 	currentTotal := 0.0
 	totalCost := 0.0
 	var priceList []string
-	for _, stock := range stockList {
+	lo.ForEach(stockList, func(stock *entity.Stock, _ int) {
 		currentTotal += stock.CurrentInfo.Price * stock.Config.Position
 		totalCost += stock.Config.CostPrice * stock.Config.Position
 		if stock.Config.ShowInTitle != nil && *stock.Config.ShowInTitle {
 			priceList = append(priceList, utils.FormatPrice(stock.CurrentInfo.Price))
 		}
-	}
-	var result = "●"
-	if *flag {
-		result = "○"
-	}
-	*flag = !*flag
+	})
+
+	var result = lo.If(*flag, "○").Else("●")
 
 	if totalCost > 0 {
-		diff := (currentTotal/totalCost - 1) * 100
-		result = result + utils.FloatToStr(diff) + "% "
+		result = result + utils.CalcReturn(totalCost, currentTotal) + "% "
 	}
 
 	// title 的格式：●闪烁标识 当前盈亏比 股票价格1 | 股票价格2
@@ -259,10 +251,6 @@ func openConfigFileAndWait() {
 func checkAndCompleteConfig() {
 	stockList := config.ReadConfigFromFile()
 
-	codeList := make([]string, len(*stockList))
-	for i, v := range *stockList {
-		codeList[i] = v.Code
-	}
 	infoMap := api.QueryStockInfo(stockList)
 
 	var validStock []config.StockConfig

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -51,16 +52,12 @@ func checkToJson(s []byte, err error) string {
 	return string(s)
 }
 
-func MapToStr[T interface{} | int | float64](vs *[]T, f func(T) string) []string {
-	vsm := make([]string, len(*vs))
-	for i, v := range *vs {
-		vsm[i] = f(v)
-	}
-	return vsm
-}
-
 func FloatToStr(num float64) string {
 	return fmt.Sprintf("%6.02f", num)
+}
+
+func CalcReturn(cost float64, current float64) string {
+	return FloatToStr((current - cost) / math.Abs(cost) * 100)
 }
 
 func FormatPrice(num float64) string {
