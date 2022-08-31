@@ -13,6 +13,7 @@ import (
 	"monitor/utils"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -157,7 +158,7 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 			})
 			codeToMenuItemMap[item.Code] = menu
 
-			if item.EnableRealTimePic {
+			if *item.EnableRealTimePic {
 				figureMenuItem := addSubMenuItem(menu, "", nil)
 				updateTimeMenuItem := addSubMenuItem(menu, "查询中...", nil)
 
@@ -204,34 +205,26 @@ func updateSubMenuTitle(stock *entity.Stock) {
 }
 
 func generateTitle(flag *bool, stockList []*entity.Stock) string {
-	currentTotal := 0.0
-	totalCost := 0.0
-	var priceList []string
-	lo.ForEach(stockList, func(stock *entity.Stock, _ int) {
-		currentTotal += stock.CurrentInfo.Price * stock.Config.Position
-		totalCost += stock.Config.CostPrice * stock.Config.Position
-		if stock.Config.ShowInTitle != nil && *stock.Config.ShowInTitle {
-			priceList = append(priceList, utils.FormatPrice(stock.CurrentInfo.Price))
-		}
+	currentTotal := lo.SumBy(stockList, func(stock *entity.Stock) float64 {
+		return stock.CurrentInfo.Price * stock.Config.Position
+	})
+	totalCost := lo.SumBy(stockList, func(stock *entity.Stock) float64 {
+		return stock.Config.CostPrice * stock.Config.Position
+	})
+	priceList := lo.FilterMap(stockList, func(stock *entity.Stock, _ int) (string, bool) {
+		return utils.FormatPrice(stock.CurrentInfo.Price),
+			stock.Config.ShowInTitle != nil && *stock.Config.ShowInTitle
 	})
 
-	var result = lo.If(*flag, "○").Else("●")
-
-	if totalCost > 0 {
-		result = result + utils.CalcReturn(totalCost, currentTotal) + "% "
+	titleList := []string{
+		lo.If(*flag, "○").Else("●"),
+		lo.If(totalCost > 0, utils.CalcReturn(totalCost, currentTotal)+"% ").Else(""),
+		strings.Join(priceList, " | "),
 	}
 
-	// title 的格式：●闪烁标识 当前盈亏比 股票价格1 | 股票价格2
-	result = result + strings.Join(priceList, " | ")
-
-	if titleLength < len(result) {
-		titleLength = len(result)
-	} else {
-		diff := titleLength - len(result)
-		for i := 0; i < diff; i++ {
-			result += " "
-		}
-	}
+	// 给标题最后补上空格：保证标题的长度不会变化，导致闪来闪去的
+	result := fmt.Sprintf("%-"+strconv.Itoa(titleLength-2)+"s", strings.Join(titleList, ""))
+	titleLength = len(result)
 
 	return result
 }

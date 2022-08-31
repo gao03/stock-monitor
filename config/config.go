@@ -33,7 +33,7 @@ type StockConfig struct {
 	Position          float64 `json:"position"`
 	Name              string  `json:"name"`
 	ShowInTitle       *bool   `json:"showInTitle"`
-	EnableRealTimePic bool    `json:"enableRealTimePic"`
+	EnableRealTimePic *bool   `json:"enableRealTimePic"`
 }
 
 func ReadConfig() *[]StockConfig {
@@ -58,7 +58,21 @@ func ReadConfigFromFile() *[]StockConfig {
 		log.Fatalln(err)
 	}
 
+	for i, stock := range result {
+		if stock.ShowInTitle == nil {
+			stock.ShowInTitle = newBool(true)
+		}
+		if stock.EnableRealTimePic == nil {
+			stock.EnableRealTimePic = newBool(false)
+		}
+		result[i] = stock
+	}
+
 	return &result
+}
+
+func newBool(b bool) *bool {
+	return &b
 }
 
 func WriteConfig(lst *[]StockConfig) {
