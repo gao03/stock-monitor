@@ -27,13 +27,14 @@ func (e *ShowInTitleType) UnmarshalJSON(b []byte) error {
 }
 
 type StockConfig struct {
-	Code              string  `json:"code"`
-	Type              *int    `json:"type"`
-	CostPrice         float64 `json:"cost"`
-	Position          float64 `json:"position"`
-	Name              string  `json:"name"`
-	ShopInTitle       bool    `json:"showInTitle"`
-	EnableRealTimePic bool    `json:"enableRealTimePic"`
+	Code              string   `json:"code"`
+	Type              *int     `json:"type"`
+	CostPrice         float64  `json:"cost"`
+	Position          float64  `json:"position"`
+	Name              string   `json:"name"`
+	ShopInTitle       bool     `json:"showInTitle"`
+	EnableRealTimePic bool     `json:"enableRealTimePic"`
+	MonitorPrices     []string `json:"monitorPrices"`
 }
 
 func ReadConfig() *[]StockConfig {

@@ -1,9 +1,11 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
+	"github.com/martinlindhe/notify"
 	"log"
 	"monitor/api"
 	"monitor/config"
@@ -27,12 +29,13 @@ func main() {
 
 	systray.Run(onReady, func() {
 		if utils.Browser != nil {
+			//goland:noinspection GoUnhandledErrorResult
 			defer utils.Browser.Close()
 		}
 	})
 }
 
-//@link https://zhuanlan.zhihu.com/p/146192035
+// @link https://zhuanlan.zhihu.com/p/146192035
 func background(logFile string) error {
 	envName := "XW_DAEMON" //环境变量名称
 	envValue := "SUB_PROC" //环境变量值
@@ -170,8 +173,23 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		}
 		stockList = append(stockList, &stock)
 		updateSubMenuTitle(&stock)
+		checkStockMonitorPrice(&stock)
 	}
 	systray.SetTitle(generateTitle(flag, stockList))
+}
+
+func checkStockMonitorPrice(stock *entity.Stock) {
+	monitors := stock.Config.MonitorPrices
+	if monitors == nil || len(monitors) == 0 {
+		return
+	}
+	for _, monitor := range monitors {
+		result := utils.CheckMonitorPrice(monitor, stock.CurrentInfo.BasePrice, stock.Config.CostPrice, stock.CurrentInfo.Price)
+		println(result)
+		if result {
+			notify.Notify("app name", "notice", "some text", "path/to/icon.png")
+		}
+	}
 }
 
 func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {

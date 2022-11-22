@@ -1,8 +1,11 @@
 package utils
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
+	"github.com/ncruces/zenity"
+	"math"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -116,4 +119,128 @@ func On(c chan struct{}, callback func()) {
 			}
 		}
 	}()
+}
+
+// CalcMinAndMaxMonitorPrice
+// 3%(相当于+/-3%), +3%, -3%：价格涨跌幅比例
+// 9 最新价格等于9
+// +3、-3：价格涨跌幅值
+// |3%, |+3%, |-3%: 相对于成本价的涨跌幅比例
+// 参数：监控配置、
+func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice float64) (float64, float64) {
+	minPrice := math.MaxFloat64
+	maxPrice := math.SmallestNonzeroFloat64
+	relativeToCost := false
+	onlyIncr := false
+	onlyDesc := false
+	isPercentage := false
+	if strings.HasPrefix(monitor, "|") {
+		relativeToCost = true
+		monitor = monitor[1:]
+	}
+	if strings.HasPrefix(monitor, "+") {
+		onlyIncr = true
+		monitor = monitor[1:]
+	} else if strings.HasPrefix(monitor, "-") {
+		onlyDesc = true
+		monitor = monitor[1:]
+	}
+	if strings.HasSuffix(monitor, "%") {
+		isPercentage = true
+		monitor = monitor[:len(monitor)-1]
+	}
+	// 去掉符号以后，剩下的就是正整数
+	monitorPrice, err := strconv.ParseFloat(monitor, 64)
+	if err != nil || monitorPrice <= 0 {
+		return minPrice, maxPrice
+	}
+	// 绝对价格的监控
+	if !isPercentage && !onlyDesc && !onlyIncr {
+		return monitorPrice, monitorPrice
+	}
+	calcBasePrice := If(relativeToCost, costPrice, basePrice)
+	if isPercentage {
+		minPrice = calcBasePrice * (1 - monitorPrice/100)
+		maxPrice = calcBasePrice * (1 + monitorPrice/100)
+	} else {
+		minPrice = calcBasePrice - monitorPrice
+		maxPrice = calcBasePrice + monitorPrice
+	}
+	minPrice = RoundNum(minPrice, 2)
+	maxPrice = RoundNum(maxPrice, 2)
+
+	if onlyIncr {
+		minPrice = math.MaxFloat64
+	}
+	if onlyDesc {
+		maxPrice = math.SmallestNonzeroFloat64
+	}
+	return minPrice, maxPrice
+}
+
+func CheckMonitorPrice(monitor string, basePrice float64, costPrice float64, currentPrice float64) bool {
+	min, max := CalcMinAndMaxMonitorPrice(monitor, basePrice, costPrice)
+	return currentPrice < min || currentPrice > max
+}
+
+func Notify(title string, content string, url string) {
+	//head := ""
+	//if content == "" {
+	//	head = title
+	//	title = ""
+	//} else {
+	//	head = content
+	//}
+	zenity.Warning("Are you sure you want to proceed?",
+		zenity.Title("Warning"),
+		zenity.NoIcon,
+		zenity.OKLabel(""))
+	//note := gosxnotifier.NewNotification(head)
+	//note.Title = "股票监控"
+	//note.Link = url
+	//note.Subtitle = title
+	//err := note.Push()
+	//if err != nil {
+	//	log.Fatal(err)
+	//	return
+	//}
+	//notify.Notify("", title, content, iconFilePath)
+}
+
+// Exists 判断所给路径文件/文件夹是否存在
+func Exists(path string) bool {
+	_, err := os.Stat(path) //os.Stat获取文件信息
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
+// IsDir 判断所给路径是否为文件夹
+func IsDir(path string) bool {
+	s, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return s.IsDir()
+}
+
+// IsFile 判断所给路径是否为文件
+func IsFile(path string) bool {
+	return !IsDir(path)
+}
+
+func RoundNum(val float64, precision int) float64 {
+	p := math.Pow10(precision)
+	return math.Floor(val*p+0.5) / p
+}
+
+func If[T any](condition bool, trueVal, falseVal T) T {
+	if condition {
+		return trueVal
+	}
+	return falseVal
 }
