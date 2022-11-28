@@ -42,7 +42,7 @@ end tell
 tell application "iTerm"
 	tell current window
 		tell current session
-			write text "/Users/gaozhiqiang03/Developer/mambaforge/bin/python ~/sync/code/east_money/update_stock_monitor_by_easemoney.py"
+			write text "/usr/local/bin/python3.10 ~/sync/code/east_money/update_stock_monitor_by_easemoney.py"
 			write text "printf 'done%.0s' {1..5}"
 		end tell
 		my wait_for("donedonedonedonedone")

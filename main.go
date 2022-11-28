@@ -93,8 +93,15 @@ func onReady() {
 		systray.AddSeparator()
 		addMenuItem("配置", openConfigFileAndWait)
 		addMenuItem("重启", restartSelf)
+		addMenuItem("刷新", updateAndRestart)
 		addMenuItem("退出", systray.Quit)
 	})
+}
+
+func updateAndRestart() {
+	systray.SetTitle("刷新中...")
+	utils.UpdateStockByEastMoney()
+	restartSelf()
 }
 
 func restartSelf() {
@@ -126,6 +133,7 @@ func addSubMenuItem(menu *systray.MenuItem, title string, onClick func()) *systr
 }
 
 func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem) {
+	println(time.Now().Format("15:04:05") + "  更新股票信息...")
 	if utils.CheckIsMarketClose() {
 		// map 为空表示程序还没运行，先让它执行一次
 		if len(codeToMenuItemMap) > 0 {

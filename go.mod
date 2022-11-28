@@ -10,12 +10,10 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/martinlindhe/notify v0.0.0-20181008203735-20632c9a275a
 	github.com/ncruces/zenity v0.9.3
-	marwan.io/iterm2 v0.0.5
 )
 
 require (
 	github.com/akavel/rsrc v0.10.2 // indirect
-	github.com/andybrewer/mack v0.0.0-20200226161639-15be3d47cc54 // indirect
 	github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f // indirect
 	github.com/deckarep/gosx-notifier v0.0.0-20180201035817-e127226297fb // indirect
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
@@ -28,8 +26,6 @@ require (
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/golang/protobuf v1.5.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/josephspurrier/goversioninfo v1.4.0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
