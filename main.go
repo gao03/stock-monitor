@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
-	"github.com/martinlindhe/notify"
+	"github.com/patrickmn/go-cache"
+	"github.com/samber/lo"
 	"log"
 	"monitor/api"
 	"monitor/config"
@@ -14,6 +15,7 @@ import (
 	"monitor/utils"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -21,35 +23,43 @@ import (
 
 var titleLength = 0
 
+// MonitorPushCache 价格监控的提醒，每个股票每个提醒 5分钟发一次
+var MonitorPushCache = cache.New(5*time.Minute, 10*time.Minute)
+
 func main() {
-	err := background("/tmp/daemon.log")
-	if err != nil {
-		log.Fatal("启动子进程失败1:", err)
+	if len(os.Args) == 1 {
+		// 如果传了参数，就不用后台运行的模式
+		background("/tmp/stock-monitor-daemon.log")
 	}
 
 	systray.Run(onReady, func() {
 		if utils.Browser != nil {
-			//goland:noinspection GoUnhandledErrorResult
 			defer utils.Browser.Close()
 		}
 	})
 }
 
 // @link https://zhuanlan.zhihu.com/p/146192035
-func background(logFile string) error {
+func background(logFile string) {
+	executeFilePath, err1 := os.Executable()
+	if err1 != nil {
+		log.Println("Executable error", err1)
+		executeFilePath = os.Args[0]
+	}
+
 	envName := "XW_DAEMON" //环境变量名称
 	envValue := "SUB_PROC" //环境变量值
 
 	val := os.Getenv(envName) //读取环境变量的值,若未设置则为空字符串
 	if val == envValue {      //监测到特殊标识, 判断为子进程,不再执行后续代码
-		return nil
+		return
 	}
 
 	/*以下是父进程执行的代码*/
 
 	//因为要设置更多的属性, 这里不使用`exec.Command`方法, 直接初始化`exec.Cmd`结构体
 	cmd := &exec.Cmd{
-		Path: os.Args[0],
+		Path: executeFilePath,
 		Args: os.Args,      //注意,此处是包含程序名的
 		Env:  os.Environ(), //父进程中的所有环境变量
 	}
@@ -74,7 +84,7 @@ func background(logFile string) error {
 	} else {
 		os.Exit(0)
 	}
-	return nil
+	return
 }
 
 func onReady() {
@@ -133,13 +143,12 @@ func addSubMenuItem(menu *systray.MenuItem, title string, onClick func()) *systr
 }
 
 func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem) {
-	println(time.Now().Format("15:04:05") + "  更新股票信息...")
-	if utils.CheckIsMarketClose() {
-		// map 为空表示程序还没运行，先让它执行一次
-		if len(codeToMenuItemMap) > 0 {
-			return
-		}
-	}
+	//if utils.CheckIsMarketClose() {
+	//	// map 为空表示程序还没运行，先让它执行一次
+	//	if len(codeToMenuItemMap) > 0 {
+	//		return
+	//	}
+	//}
 
 	stockConfigList := config.ReadConfig()
 	if len(*stockConfigList) == 0 {
@@ -193,68 +202,67 @@ func checkStockMonitorPrice(stock *entity.Stock) {
 	}
 	for _, monitor := range monitors {
 		result := utils.CheckMonitorPrice(monitor, stock.CurrentInfo.BasePrice, stock.Config.CostPrice, stock.CurrentInfo.Price)
-		println(result)
 		if result {
-			notify.Notify("app name", "notice", "some text", "path/to/icon.png")
+			var cacheKey = stock.Code + "-" + monitor
+			_, found := MonitorPushCache.Get(cacheKey)
+			if found {
+				continue
+			}
+			MonitorPushCache.SetDefault(cacheKey, "")
+			message := "当前价格" + utils.FormatPrice(stock.CurrentInfo.Price) + "; 涨幅" + utils.FloatToStr(stock.CurrentInfo.Diff) + "%"
+			utils.Notify(stock.CurrentInfo.Name, message, GenerateXueqiuUrl(&stock.CurrentInfo))
 		}
 	}
 }
 
 func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
-	url := "https://xueqiu.com/S/S"
+	url := "https://xueqiu.com/S/"
 	typeStr := ""
 	switch current.Type {
 	case StockType.SHEN_ZHEN:
-		typeStr = "Z"
+		typeStr = "SZ"
 	case StockType.SHANG_HAI:
-		typeStr = "H"
+		typeStr = "SH"
 	default:
-		typeStr = "S"
+		typeStr = ""
 	}
 	return url + typeStr + current.Code
 }
 
 func updateSubMenuTitle(stock *entity.Stock) {
-	var result = stock.CurrentInfo.Name + "\t" +
-		utils.FloatToStr(stock.CurrentInfo.Price) + "\t" +
-		utils.FloatToStr(stock.CurrentInfo.Diff)
+	var positionDiff = ""
+	if stock.Config.Position > 0 {
+		positionDiff = "\t" + utils.CalcReturn(stock.Config.CostPrice, stock.CurrentInfo.Price)
+	}
+	var result = stock.CurrentInfo.Name + "\t  " +
+		utils.FormatPrice(stock.CurrentInfo.Price) + "\t" +
+		utils.FloatToStr(stock.CurrentInfo.Diff) +
+		positionDiff
 
 	stock.MenuItem.SetTitle(result)
 }
 
 func generateTitle(flag *bool, stockList []*entity.Stock) string {
-	currentTotal := 0.0
-	totalCost := 0.0
-	var priceList []string
-	for _, stock := range stockList {
-		currentTotal += stock.CurrentInfo.Price * stock.Config.Position
-		totalCost += stock.Config.CostPrice * stock.Config.Position
-		if stock.Config.ShopInTitle {
-			priceList = append(priceList, utils.FloatToStr(stock.CurrentInfo.Price))
-		}
-	}
-	var result = "●"
-	if *flag {
-		result = "○"
-	}
-	*flag = !*flag
+	currentTotal := lo.SumBy(stockList, func(stock *entity.Stock) float64 {
+		return stock.CurrentInfo.Price * stock.Config.Position
+	})
+	totalCost := lo.SumBy(stockList, func(stock *entity.Stock) float64 {
+		return stock.Config.CostPrice * stock.Config.Position
+	})
+	priceList := lo.FilterMap(stockList, func(stock *entity.Stock, _ int) (string, bool) {
+		return utils.FormatPrice(stock.CurrentInfo.Price),
+			*stock.Config.ShowInTitle
+	})
 
-	if totalCost > 0 {
-		diff := (currentTotal/totalCost - 1) * 100
-		result = result + utils.FloatToStr(diff) + "% "
+	titleList := []string{
+		lo.If(*flag, "○").Else("●"),
+		lo.If(totalCost > 0, utils.CalcReturn(totalCost, currentTotal)+"% ").Else(""),
+		strings.Join(priceList, " | "),
 	}
 
-	// title 的格式：●闪烁标识 当前盈亏比 股票价格1 | 股票价格2
-	result = result + strings.Join(priceList, " | ")
-
-	if titleLength < len(result) {
-		titleLength = len(result)
-	} else {
-		diff := titleLength - len(result)
-		for i := 0; i < diff; i++ {
-			result += " "
-		}
-	}
+	// 给标题最后补上空格：保证标题的长度不会变化，导致闪来闪去的
+	result := fmt.Sprintf("%-"+strconv.Itoa(titleLength-2)+"s", strings.Join(titleList, ""))
+	titleLength = len(result)
 
 	return result
 }
@@ -288,8 +296,8 @@ func checkAndCompleteConfig() {
 		if !ok {
 			continue
 		}
-		if stock.Name == "" {
-			stock.ShopInTitle = true
+		if stock.ShowInTitle == nil {
+			stock.ShowInTitle = BoolPointer(false)
 		}
 		stock.Name = info.Name
 		stock.Type = &info.Type
@@ -299,4 +307,8 @@ func checkAndCompleteConfig() {
 	config.WriteConfig(&validStock)
 
 	restartSelf()
+}
+
+func BoolPointer(b bool) *bool {
+	return &b
 }

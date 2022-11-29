@@ -4,9 +4,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"github.com/ncruces/zenity"
+	"fmt"
+	"log"
 	"math"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -63,11 +65,18 @@ func MapToStr[T interface{} | int | float64](vs *[]T, f func(T) string) []string
 }
 
 func FloatToStr(num float64) string {
-	f := strconv.FormatFloat(num, 'f', 3, 64)
-	if f[len(f)-1] == '0' {
-		return f[:len(f)-1]
+	return fmt.Sprintf("%6.02f", num)
+}
+
+func CalcReturn(cost float64, current float64) string {
+	return FloatToStr((current - cost) / math.Abs(cost) * 100)
+}
+
+func FormatPrice(num float64) string {
+	if num < 1 {
+		return fmt.Sprintf("%6.03f", num)
 	}
-	return f
+	return fmt.Sprintf("%6.02f", num)
 }
 
 func CheckIsMarketClose() bool {
@@ -184,27 +193,16 @@ func CheckMonitorPrice(monitor string, basePrice float64, costPrice float64, cur
 }
 
 func Notify(title string, content string, url string) {
-	//head := ""
-	//if content == "" {
-	//	head = title
-	//	title = ""
-	//} else {
-	//	head = content
-	//}
-	zenity.Warning("Are you sure you want to proceed?",
-		zenity.Title("Warning"),
-		zenity.NoIcon,
-		zenity.OKLabel(""))
-	//note := gosxnotifier.NewNotification(head)
-	//note.Title = "股票监控"
-	//note.Link = url
-	//note.Subtitle = title
-	//err := note.Push()
-	//if err != nil {
-	//	log.Fatal(err)
-	//	return
-	//}
-	//notify.Notify("", title, content, iconFilePath)
+	err := exec.Command("terminal-notifier",
+		"-title", title,
+		"-message", content,
+		"-subtitle", title,
+		"-open", url,
+	).Run()
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
 }
 
 // Exists 判断所给路径文件/文件夹是否存在
