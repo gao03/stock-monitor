@@ -143,12 +143,12 @@ func addSubMenuItem(menu *systray.MenuItem, title string, onClick func()) *systr
 }
 
 func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem) {
-	//if utils.CheckIsMarketClose() {
-	//	// map 为空表示程序还没运行，先让它执行一次
-	//	if len(codeToMenuItemMap) > 0 {
-	//		return
-	//	}
-	//}
+	if utils.CheckIsMarketClose() {
+		// map 为空表示程序还没运行，先让它执行一次
+		if len(codeToMenuItemMap) > 0 {
+			return
+		}
+	}
 
 	stockConfigList := config.ReadConfig()
 	if len(*stockConfigList) == 0 {
