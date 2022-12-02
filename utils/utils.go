@@ -137,8 +137,8 @@ func On(c chan struct{}, callback func()) {
 // |3%, |+3%, |-3%: 相对于成本价的涨跌幅比例
 // 参数：监控配置、
 func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice float64) (float64, float64) {
-	minPrice := math.MaxFloat64
-	maxPrice := math.SmallestNonzeroFloat64
+	minPrice := math.SmallestNonzeroFloat64
+	maxPrice := math.MaxFloat64
 	relativeToCost := false
 	onlyIncr := false
 	onlyDesc := false
@@ -179,10 +179,10 @@ func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice floa
 	maxPrice = RoundNum(maxPrice, 2)
 
 	if onlyIncr {
-		minPrice = math.MaxFloat64
+		minPrice = math.SmallestNonzeroFloat64
 	}
 	if onlyDesc {
-		maxPrice = math.SmallestNonzeroFloat64
+		maxPrice = math.MaxFloat64
 	}
 	return minPrice, maxPrice
 }

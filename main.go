@@ -90,6 +90,8 @@ func background(logFile string) {
 func onReady() {
 	systray.SetTitle("monitor")
 
+	checkTodayRefreshConfig()
+
 	flag := false
 	codeToMenuItemMap := make(map[string]*systray.MenuItem)
 
@@ -111,6 +113,7 @@ func onReady() {
 func updateAndRestart() {
 	systray.SetTitle("刷新中...")
 	utils.UpdateStockByEastMoney()
+	checkAndCompleteConfig()
 	restartSelf()
 }
 
@@ -277,6 +280,13 @@ func openConfigFileAndWait() {
 		err = cmd.Wait()
 		checkAndCompleteConfig()
 	}()
+}
+
+func checkTodayRefreshConfig() {
+	if config.IsConfigRefreshToday() {
+		return
+	}
+	updateAndRestart()
 }
 
 func checkAndCompleteConfig() {

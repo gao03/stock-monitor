@@ -2,9 +2,11 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"monitor/utils"
+	"os"
+	"time"
 )
 
 var FILE_NAME = utils.ExpandUser("~/.config/StockMonitor.json")
@@ -49,7 +51,7 @@ func ReadConfig() *[]StockConfig {
 func ReadConfigFromFile() *[]StockConfig {
 	var result []StockConfig
 
-	data, err := ioutil.ReadFile(FILE_NAME)
+	data, err := os.ReadFile(FILE_NAME)
 	if err != nil {
 		return &result
 	}
@@ -62,13 +64,29 @@ func ReadConfigFromFile() *[]StockConfig {
 	return &result
 }
 
+func IsConfigRefreshToday() bool {
+	file, err := os.Stat(FILE_NAME)
+
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	modTime := file.ModTime()
+	now := time.Now()
+	return modTime.Year() == now.Year() &&
+		modTime.Month() == now.Month() &&
+		modTime.Day() == now.Day()
+
+}
+
 func WriteConfig(lst *[]StockConfig) {
 	data, err := json.MarshalIndent(*lst, "", "  ")
 	if err != nil {
 		log.Fatalln("err in json ", err)
 		return
 	}
-	err = ioutil.WriteFile(FILE_NAME, data, 0644)
+	err = os.WriteFile(FILE_NAME, data, 0644)
 	if err != nil {
 		log.Fatalln("err in write file", err)
 		return
