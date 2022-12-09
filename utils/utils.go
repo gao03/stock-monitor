@@ -132,7 +132,7 @@ func On(c chan struct{}, callback func()) {
 
 // CalcMinAndMaxMonitorPrice
 // 3%(相当于+/-3%), +3%, -3%：价格涨跌幅比例
-// 9 最新价格等于9
+// 9+/9- 当前价格大于9/小于
 // +3、-3：价格涨跌幅值
 // |3%, |+3%, |-3%: 相对于成本价的涨跌幅比例
 // 参数：监控配置、
@@ -143,6 +143,8 @@ func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice floa
 	onlyIncr := false
 	onlyDesc := false
 	isPercentage := false
+	isAbsolute := false
+	isAbsoluteInc := true // 绝对值判断的涨/跌
 	if strings.HasPrefix(monitor, "|") {
 		relativeToCost = true
 		monitor = monitor[1:]
@@ -158,14 +160,22 @@ func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice floa
 		isPercentage = true
 		monitor = monitor[:len(monitor)-1]
 	}
+	if strings.HasSuffix(monitor, "+") || strings.HasSuffix(monitor, "-") {
+		isAbsolute = true
+		isAbsoluteInc = monitor[len(monitor)-1] == '+'
+		monitor = monitor[:len(monitor)-1]
+	}
 	// 去掉符号以后，剩下的就是正整数
 	monitorPrice, err := strconv.ParseFloat(monitor, 64)
 	if err != nil || monitorPrice <= 0 {
 		return minPrice, maxPrice
 	}
 	// 绝对价格的监控
-	if !isPercentage && !onlyDesc && !onlyIncr {
-		return monitorPrice, monitorPrice
+	if isAbsolute {
+		if isAbsoluteInc {
+			return minPrice, monitorPrice
+		}
+		return monitorPrice, maxPrice
 	}
 	calcBasePrice := If(relativeToCost, costPrice, basePrice)
 	if isPercentage {
@@ -192,11 +202,11 @@ func CheckMonitorPrice(monitor string, basePrice float64, costPrice float64, cur
 	return currentPrice < min || currentPrice > max
 }
 
-func Notify(title string, content string, url string) {
+func Notify(title string, subtitle string, content string, url string) {
 	err := exec.Command("terminal-notifier",
 		"-title", title,
 		"-message", content,
-		"-subtitle", title,
+		"-subtitle", subtitle,
 		"-open", url,
 	).Run()
 	if err != nil {

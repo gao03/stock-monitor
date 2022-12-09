@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
+	"github.com/ncruces/zenity"
 	"github.com/patrickmn/go-cache"
 	"github.com/samber/lo"
 	"log"
 	"monitor/api"
 	"monitor/config"
 	"monitor/constant/StockType"
+	"monitor/dialog"
 	"monitor/entity"
 	"monitor/utils"
 	"os"
@@ -106,6 +108,7 @@ func onReady() {
 		addMenuItem("配置", openConfigFileAndWait)
 		addMenuItem("重启", restartSelf)
 		addMenuItem("刷新", updateAndRestart)
+		addMenuItem("添加", addStockToConfig)
 		addMenuItem("退出", systray.Quit)
 	})
 }
@@ -115,6 +118,42 @@ func updateAndRestart() {
 	utils.UpdateStockByEastMoney()
 	checkAndCompleteConfig()
 	restartSelf()
+}
+
+func addStockToConfig() {
+	stockCurrentInfo := dialog.InputNewStock()
+	if stockCurrentInfo == nil {
+		return
+	}
+
+	stock := config.StockConfig{
+		Code:              stockCurrentInfo.Code,
+		Type:              &stockCurrentInfo.Type,
+		Name:              stockCurrentInfo.Name,
+		ShowInTitle:       BoolPointer(false),
+		EnableRealTimePic: false,
+	}
+	stockList := config.ReadConfigFromFile()
+	newStockList := append(*stockList, stock)
+	config.WriteConfig(&newStockList)
+	checkAndCompleteConfig()
+	restartSelf()
+}
+
+func removeStockFromConfig(stock config.StockConfig) func() {
+	return func() {
+		err := zenity.Question("确定要删除 " + stock.Name + " ?")
+		if err != nil {
+			return
+		}
+		stockList := config.ReadConfigFromFile()
+		newStockList := lo.Filter(*stockList, func(item config.StockConfig, index int) bool {
+			return item.Code != stock.Code
+		})
+		config.WriteConfig(&newStockList)
+		checkAndCompleteConfig()
+		restartSelf()
+	}
 }
 
 func restartSelf() {
@@ -178,6 +217,7 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 			})
 			codeToMenuItemMap[item.Code] = menu
 
+			addSubMenuItem(menu, "删除", removeStockFromConfig(item))
 			if item.EnableRealTimePic {
 				figureMenuItem := addSubMenuItem(menu, "", nil)
 				updateTimeMenuItem := addSubMenuItem(menu, "查询中...", nil)
@@ -213,7 +253,8 @@ func checkStockMonitorPrice(stock *entity.Stock) {
 			}
 			MonitorPushCache.SetDefault(cacheKey, "")
 			message := "当前价格" + utils.FormatPrice(stock.CurrentInfo.Price) + "; 涨幅" + utils.FloatToStr(stock.CurrentInfo.Diff) + "%"
-			utils.Notify(stock.CurrentInfo.Name, message, GenerateXueqiuUrl(&stock.CurrentInfo))
+			subtitle := "规则：" + monitor
+			utils.Notify(stock.CurrentInfo.Name, subtitle, message, GenerateXueqiuUrl(&stock.CurrentInfo))
 		}
 	}
 }
@@ -253,8 +294,11 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 		return stock.Config.CostPrice * stock.Config.Position
 	})
 	priceList := lo.FilterMap(stockList, func(stock *entity.Stock, _ int) (string, bool) {
-		return utils.FormatPrice(stock.CurrentInfo.Price),
-			*stock.Config.ShowInTitle
+		sit := stock.Config.ShowInTitle
+		if sit == nil {
+			sit = BoolPointer(false)
+		}
+		return utils.FormatPrice(stock.CurrentInfo.Price), *sit
 	})
 
 	titleList := []string{

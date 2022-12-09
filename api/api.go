@@ -44,6 +44,18 @@ func QueryStockInfo(codeList *[]config.StockConfig) map[string]StockCurrentInfo 
 	return result
 }
 
+func QueryOneStockInfoByCode(code string) []StockCurrentInfo {
+	var codeStr = stockCodeToApiCode(config.StockConfig{Code: code})
+	url := "https://push2.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18,f232&fltt=2&secids=" + codeStr
+	var response ApiResponse
+
+	err := gout.GET(url).Debug(false).BindJSON(&response).Do()
+	if err != nil {
+		return []StockCurrentInfo{}
+	}
+	return response.Data.StockInfoList
+}
+
 func stockCodeToApiCode(stock config.StockConfig) string {
 	s := stock.Code
 	if stock.Type != nil {
