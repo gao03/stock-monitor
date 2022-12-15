@@ -49,3 +49,22 @@ func InputNewStock() *api.StockCurrentInfo {
 
 	return &stock
 }
+
+func Confirm(message string) bool {
+	err := zenity.Question(message)
+	if err != nil {
+		println("err", err)
+		return false
+	}
+
+	return true
+}
+
+func Input(message string) string {
+	s, err := zenity.Entry(message)
+	if err != nil {
+		println(err)
+		return ""
+	}
+	return s
+}

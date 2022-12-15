@@ -136,7 +136,7 @@ func On(c chan struct{}, callback func()) {
 // +3、-3：价格涨跌幅值
 // |3%, |+3%, |-3%: 相对于成本价的涨跌幅比例
 // 参数：监控配置、
-func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice float64) (float64, float64) {
+func CalcMinAndMaxMonitorPrice(rule string, todayBasePrice float64, costPrice float64) (float64, float64) {
 	minPrice := math.SmallestNonzeroFloat64
 	maxPrice := math.MaxFloat64
 	relativeToCost := false
@@ -145,28 +145,28 @@ func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice floa
 	isPercentage := false
 	isAbsolute := false
 	isAbsoluteInc := true // 绝对值判断的涨/跌
-	if strings.HasPrefix(monitor, "|") {
+	if strings.HasPrefix(rule, "|") {
 		relativeToCost = true
-		monitor = monitor[1:]
+		rule = rule[1:]
 	}
-	if strings.HasPrefix(monitor, "+") {
+	if strings.HasPrefix(rule, "+") {
 		onlyIncr = true
-		monitor = monitor[1:]
-	} else if strings.HasPrefix(monitor, "-") {
+		rule = rule[1:]
+	} else if strings.HasPrefix(rule, "-") {
 		onlyDesc = true
-		monitor = monitor[1:]
+		rule = rule[1:]
 	}
-	if strings.HasSuffix(monitor, "%") {
+	if strings.HasSuffix(rule, "%") {
 		isPercentage = true
-		monitor = monitor[:len(monitor)-1]
+		rule = rule[:len(rule)-1]
 	}
-	if strings.HasSuffix(monitor, "+") || strings.HasSuffix(monitor, "-") {
+	if strings.HasSuffix(rule, "+") || strings.HasSuffix(rule, "-") {
 		isAbsolute = true
-		isAbsoluteInc = monitor[len(monitor)-1] == '+'
-		monitor = monitor[:len(monitor)-1]
+		isAbsoluteInc = rule[len(rule)-1] == '+'
+		rule = rule[:len(rule)-1]
 	}
 	// 去掉符号以后，剩下的就是正整数
-	monitorPrice, err := strconv.ParseFloat(monitor, 64)
+	monitorPrice, err := strconv.ParseFloat(rule, 64)
 	if err != nil || monitorPrice <= 0 {
 		return minPrice, maxPrice
 	}
@@ -177,7 +177,7 @@ func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice floa
 		}
 		return monitorPrice, maxPrice
 	}
-	calcBasePrice := If(relativeToCost, costPrice, basePrice)
+	calcBasePrice := If(relativeToCost, costPrice, todayBasePrice)
 	if isPercentage {
 		minPrice = calcBasePrice * (1 - monitorPrice/100)
 		maxPrice = calcBasePrice * (1 + monitorPrice/100)
@@ -197,8 +197,8 @@ func CalcMinAndMaxMonitorPrice(monitor string, basePrice float64, costPrice floa
 	return minPrice, maxPrice
 }
 
-func CheckMonitorPrice(monitor string, basePrice float64, costPrice float64, currentPrice float64) bool {
-	min, max := CalcMinAndMaxMonitorPrice(monitor, basePrice, costPrice)
+func CheckMonitorPrice(rule string, todayBasePrice float64, costPrice float64, currentPrice float64) bool {
+	min, max := CalcMinAndMaxMonitorPrice(rule, todayBasePrice, costPrice)
 	return currentPrice < min || currentPrice > max
 }
 
@@ -251,4 +251,8 @@ func If[T any](condition bool, trueVal, falseVal T) T {
 		return trueVal
 	}
 	return falseVal
+}
+
+func IsTrue(b *bool) bool {
+	return b != nil && *b
 }

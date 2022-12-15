@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/getlantern/systray"
 	"github.com/kardianos/osext"
-	"github.com/ncruces/zenity"
 	"github.com/patrickmn/go-cache"
 	"github.com/samber/lo"
 	"log"
@@ -17,6 +16,7 @@ import (
 	"monitor/utils"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -107,7 +107,9 @@ func onReady() {
 		systray.AddSeparator()
 		addMenuItem("配置", openConfigFileAndWait)
 		addMenuItem("重启", restartSelf)
-		addMenuItem("刷新", updateAndRestart)
+		if config.HasEastMoneyAccount() {
+			addMenuItem("刷新", updateAndRestart)
+		}
 		addMenuItem("添加", addStockToConfig)
 		addMenuItem("退出", systray.Quit)
 	})
@@ -142,18 +144,33 @@ func addStockToConfig() {
 
 func removeStockFromConfig(stock config.StockConfig) func() {
 	return func() {
-		err := zenity.Question("确定要删除 " + stock.Name + " ?")
-		if err != nil {
+		confirm := dialog.Confirm("确定要删除 " + stock.Name + " ?")
+		if !confirm {
 			return
 		}
-		stockList := config.ReadConfigFromFile()
-		newStockList := lo.Filter(*stockList, func(item config.StockConfig, index int) bool {
-			return item.Code != stock.Code
+
+		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
+			return lo.Filter(*stockList, func(item config.StockConfig, index int) bool {
+				return item.Code != stock.Code
+			})
 		})
-		config.WriteConfig(&newStockList)
-		checkAndCompleteConfig()
-		restartSelf()
 	}
+}
+
+func ChangeConfigAndRestart(changeFunc func(stockList *[]config.StockConfig) []config.StockConfig) {
+	stockList := config.ReadConfigFromFile()
+	newConfig := changeFunc(stockList)
+	sort.Slice(newConfig, func(i, j int) bool {
+		// 如果两个都没配置showInTitle，或者2个都配置了，那就保持原来的顺序
+		if utils.IsTrue(newConfig[i].ShowInTitle) == utils.IsTrue(newConfig[j].ShowInTitle) {
+			return i < j
+		}
+		// 否则，配置了showInTitle的排在前面
+		return utils.IsTrue(newConfig[i].ShowInTitle)
+	})
+	config.WriteConfig(&newConfig)
+	checkAndCompleteConfig()
+	restartSelf()
 }
 
 func restartSelf() {
@@ -213,17 +230,11 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		menu, ok := codeToMenuItemMap[item.Code]
 		if !ok {
 			menu = addMenuItem(item.Code, func() {
-				exec.Command("open", GenerateXueqiuUrl(&current)).Start()
+				exec.Command("open", GenerateXueqiuUrl(item)).Start()
 			})
 			codeToMenuItemMap[item.Code] = menu
 
-			addSubMenuItem(menu, "删除", removeStockFromConfig(item))
-			if item.EnableRealTimePic {
-				figureMenuItem := addSubMenuItem(menu, "", nil)
-				updateTimeMenuItem := addSubMenuItem(menu, "查询中...", nil)
-
-				go utils.RegisterUpdateStockFigure(GenerateXueqiuUrl(&current), figureMenuItem, updateTimeMenuItem)
-			}
+			addSubMenuToStock(menu, item)
 		}
 		stock := entity.Stock{
 			Code:        item.Code,
@@ -238,31 +249,149 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 	systray.SetTitle(generateTitle(flag, stockList))
 }
 
-func checkStockMonitorPrice(stock *entity.Stock) {
-	monitors := stock.Config.MonitorPrices
-	if monitors == nil || len(monitors) == 0 {
-		return
+func addSubMenuToStock(menu *systray.MenuItem, item config.StockConfig) {
+	addSubMenuItem(menu, "删除", removeStockFromConfig(item))
+
+	// showInTitle 取反
+	showInTitleNewVal := item.ShowInTitle == nil || !*item.ShowInTitle
+	showInTitleMessage := "置顶"
+	if !showInTitleNewVal {
+		showInTitleMessage = "取消置顶"
 	}
-	for _, monitor := range monitors {
-		result := utils.CheckMonitorPrice(monitor, stock.CurrentInfo.BasePrice, stock.Config.CostPrice, stock.CurrentInfo.Price)
-		if result {
-			var cacheKey = stock.Code + "-" + monitor
-			_, found := MonitorPushCache.Get(cacheKey)
-			if found {
-				continue
-			}
-			MonitorPushCache.SetDefault(cacheKey, "")
-			message := "当前价格" + utils.FormatPrice(stock.CurrentInfo.Price) + "; 涨幅" + utils.FloatToStr(stock.CurrentInfo.Diff) + "%"
-			subtitle := "规则：" + monitor
-			utils.Notify(stock.CurrentInfo.Name, subtitle, message, GenerateXueqiuUrl(&stock.CurrentInfo))
+	addSubMenuItem(menu, showInTitleMessage, updateStockShowInTitle(item, showInTitleNewVal, showInTitleMessage))
+
+	addSubMenuItem(menu, "添加监控", addStockMonitorRule(item))
+	if len(item.MonitorRules) > 0 {
+		for _, rule := range item.MonitorRules {
+			addSubMenuItem(menu, "监控 "+rule, removeStockMonitorRule(item, rule))
 		}
+	}
+
+	enableRealTimePicNewVal := !item.EnableRealTimePic
+	enableRealTimePicMessage := "启用时分图"
+	if !enableRealTimePicNewVal {
+		enableRealTimePicMessage = "关闭时分图"
+	}
+	addSubMenuItem(menu, enableRealTimePicMessage, updateStockEnableRealTimePic(item, enableRealTimePicNewVal))
+
+	if item.EnableRealTimePic {
+		figureMenuItem := addSubMenuItem(menu, "", nil)
+		updateTimeMenuItem := addSubMenuItem(menu, "查询中...", nil)
+
+		go utils.RegisterUpdateStockFigure(GenerateXueqiuUrl(item), figureMenuItem, updateTimeMenuItem)
 	}
 }
 
-func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
+func updateStockEnableRealTimePic(stock config.StockConfig, newVal bool) func() {
+	return func() {
+		op := lo.If(newVal, "启用").Else("关闭")
+		confirm := dialog.Confirm("确定要" + op + stock.Name + "的时分图 ?")
+		if !confirm {
+			return
+		}
+		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
+			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+				if item.Code == stock.Code {
+					item.EnableRealTimePic = newVal
+				}
+				return item
+			})
+		})
+	}
+}
+
+func updateStockShowInTitle(stock config.StockConfig, newVal bool, opMessage string) func() {
+	return func() {
+		confirm := dialog.Confirm("确定要" + opMessage + stock.Name + " ?")
+		if !confirm {
+			return
+		}
+		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
+			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+				if item.Code == stock.Code {
+					item.ShowInTitle = BoolPointer(newVal)
+				}
+				return item
+			})
+		})
+	}
+}
+
+func addStockMonitorRule(stock config.StockConfig) func() {
+	return func() {
+		rule := dialog.Input("输入给 " + stock.Name + " 添加的监控规则：")
+		if rule == "" {
+			return
+		}
+		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
+			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+				if item.Code == stock.Code {
+					item.MonitorRules = append(item.MonitorRules, rule)
+				}
+				return item
+			})
+		})
+	}
+}
+
+func removeStockMonitorRule(stock config.StockConfig, rule string) func() {
+	return func() {
+		confirm := dialog.Confirm("确定要删除 " + stock.Name + " 的监控规则[" + rule + "] ?")
+		if !confirm {
+			return
+		}
+		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
+			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+				if item.Code == stock.Code {
+					item.MonitorRules = lo.Filter(item.MonitorRules, func(iu string, idx int) bool {
+						return iu != rule
+					})
+				}
+				return item
+			})
+		})
+	}
+}
+
+func checkStockMonitorPrice(stock *entity.Stock) {
+	rules := stock.Config.MonitorRules
+	if rules == nil || len(rules) == 0 {
+		return
+	}
+	todayBasePrice := stock.CurrentInfo.BasePrice
+	costPrice := stock.Config.CostPrice
+	currentPrice := stock.CurrentInfo.Price
+
+	checkCacheAndNotify := func(rule string) {
+		var cacheKey = stock.Code + "-" + rule
+		_, found := MonitorPushCache.Get(cacheKey)
+		if found {
+			return
+		}
+		MonitorPushCache.SetDefault(cacheKey, "")
+		message := "当前价格" + utils.FormatPrice(currentPrice) + "; 涨幅" + utils.FloatToStr(stock.CurrentInfo.Diff) + "%"
+		subtitle := "规则：" + rule
+		utils.Notify(stock.CurrentInfo.Name, subtitle, message, GenerateXueqiuUrl(stock.Config))
+	}
+
+	for _, rule := range rules {
+		result := utils.CheckMonitorPrice(rule, todayBasePrice, costPrice, currentPrice)
+		if result {
+			checkCacheAndNotify(rule)
+		}
+	}
+
+	if stock.Config.Position > 0 && costPrice > todayBasePrice && costPrice < currentPrice {
+		// 持仓大于0 且 持仓成本大于昨天收盘价格 且 持仓成本小于当前价格
+		checkCacheAndNotify("回本")
+	}
+
+}
+
+func GenerateXueqiuUrl(config config.StockConfig) string {
 	url := "https://xueqiu.com/S/"
 	typeStr := ""
-	switch current.Type {
+	switch *config.Type {
 	case StockType.SHEN_ZHEN:
 		typeStr = "SZ"
 	case StockType.SHANG_HAI:
@@ -270,7 +399,7 @@ func GenerateXueqiuUrl(current *api.StockCurrentInfo) string {
 	default:
 		typeStr = ""
 	}
-	return url + typeStr + current.Code
+	return url + typeStr + config.Code
 }
 
 func updateSubMenuTitle(stock *entity.Stock) {
@@ -327,6 +456,9 @@ func openConfigFileAndWait() {
 }
 
 func checkTodayRefreshConfig() {
+	if !config.HasEastMoneyAccount() {
+		return
+	}
 	if config.IsConfigRefreshToday() {
 		return
 	}

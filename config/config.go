@@ -36,7 +36,7 @@ type StockConfig struct {
 	Name              string   `json:"name"`
 	ShowInTitle       *bool    `json:"showInTitle"`
 	EnableRealTimePic bool     `json:"enableRealTimePic"`
-	MonitorPrices     []string `json:"monitorPrices"`
+	MonitorRules      []string `json:"monitorRules"`
 }
 
 func ReadConfig() *[]StockConfig {
@@ -77,7 +77,10 @@ func IsConfigRefreshToday() bool {
 	return modTime.Year() == now.Year() &&
 		modTime.Month() == now.Month() &&
 		modTime.Day() == now.Day()
+}
 
+func HasEastMoneyAccount() bool {
+	return os.Getenv("EAST_MONEY_USER") != ""
 }
 
 func WriteConfig(lst *[]StockConfig) {
