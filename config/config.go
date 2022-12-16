@@ -2,9 +2,11 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"monitor/utils"
+	"os"
+	"time"
 )
 
 var FILE_NAME = utils.ExpandUser("~/.config/StockMonitor.json")
@@ -27,13 +29,14 @@ func (e *ShowInTitleType) UnmarshalJSON(b []byte) error {
 }
 
 type StockConfig struct {
-	Code              string  `json:"code"`
-	Type              *int    `json:"type"`
-	CostPrice         float64 `json:"cost"`
-	Position          float64 `json:"position"`
-	Name              string  `json:"name"`
-	ShowInTitle       *bool   `json:"showInTitle"`
-	EnableRealTimePic *bool   `json:"enableRealTimePic"`
+	Code              string   `json:"code"`
+	Type              *int     `json:"type"`
+	CostPrice         float64  `json:"cost"`
+	Position          float64  `json:"position"`
+	Name              string   `json:"name"`
+	ShowInTitle       *bool    `json:"showInTitle"`
+	EnableRealTimePic bool     `json:"enableRealTimePic"`
+	MonitorRules      []string `json:"monitorRules"`
 }
 
 func ReadConfig() *[]StockConfig {
@@ -48,7 +51,7 @@ func ReadConfig() *[]StockConfig {
 func ReadConfigFromFile() *[]StockConfig {
 	var result []StockConfig
 
-	data, err := ioutil.ReadFile(FILE_NAME)
+	data, err := os.ReadFile(FILE_NAME)
 	if err != nil {
 		return &result
 	}
@@ -58,21 +61,26 @@ func ReadConfigFromFile() *[]StockConfig {
 		log.Fatalln(err)
 	}
 
-	for i, stock := range result {
-		if stock.ShowInTitle == nil {
-			stock.ShowInTitle = newBool(true)
-		}
-		if stock.EnableRealTimePic == nil {
-			stock.EnableRealTimePic = newBool(false)
-		}
-		result[i] = stock
-	}
-
 	return &result
 }
 
-func newBool(b bool) *bool {
-	return &b
+func IsConfigRefreshToday() bool {
+	file, err := os.Stat(FILE_NAME)
+
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	modTime := file.ModTime()
+	now := time.Now()
+	return modTime.Year() == now.Year() &&
+		modTime.Month() == now.Month() &&
+		modTime.Day() == now.Day()
+}
+
+func HasEastMoneyAccount() bool {
+	return os.Getenv("EAST_MONEY_USER") != ""
 }
 
 func WriteConfig(lst *[]StockConfig) {
@@ -81,7 +89,7 @@ func WriteConfig(lst *[]StockConfig) {
 		log.Fatalln("err in json ", err)
 		return
 	}
-	err = ioutil.WriteFile(FILE_NAME, data, 0644)
+	err = os.WriteFile(FILE_NAME, data, 0644)
 	if err != nil {
 		log.Fatalln("err in write file", err)
 		return
