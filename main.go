@@ -229,9 +229,7 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		}
 		menu, ok := codeToMenuItemMap[item.Code]
 		if !ok {
-			menu = addMenuItem(item.Code, func() {
-				exec.Command("open", GenerateXueqiuUrl(item)).Start()
-			})
+			menu = addMenuItem(item.Code, OpenXueQiuUrl(item))
 			codeToMenuItemMap[item.Code] = menu
 
 			addSubMenuToStock(menu, item)
@@ -247,6 +245,12 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		checkStockMonitorPrice(&stock)
 	}
 	systray.SetTitle(generateTitle(flag, stockList))
+}
+
+func OpenXueQiuUrl(item config.StockConfig) func() {
+	return func() {
+		exec.Command("open", GenerateXueqiuUrl(item)).Start()
+	}
 }
 
 func addSubMenuToStock(menu *systray.MenuItem, item config.StockConfig) {
