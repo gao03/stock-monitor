@@ -121,8 +121,6 @@ WchaWUXauj9Lrhz58/6AE/NF0aMolxIGpsi+ST\n2hSHPu3GSXMdhPCkWQIDAQAB\n-----END PUBLI
         ocr = ddddocr.DdddOcr(show_ad=False)
         self.random_number = "0.903%d" % random.randint(100000, 900000)
         img_content = self._get_code_image()
-        with open(f"/Users/gaozhiqiang03/tmp/img/{time.time()}.jpg", "wb") as f:
-            f.write(img_content)
         code = ocr.classification(img_content)
         print(f"ocr 验证码:{code}")
         if len(code) == 4:
@@ -272,6 +270,7 @@ def main():
     for i in rst:
         if i["position"] > 0 and i["code"] not in pos_map:
             i["position"] = 0
+            i["cost"] = 0
             i["showInTitle"] = False
         if i["position"] * i["cost"] > 1000:
             i["showInTitle"] = True

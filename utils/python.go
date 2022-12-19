@@ -12,7 +12,7 @@ import (
 var updateStockByEastMoneyScriptContent string
 
 func UpdateStockByEastMoney() {
-	cmd := exec.Command(`/usr/local/bin/python3.10`, "-")
+	cmd := exec.Command(os.Getenv("STOCK_MONITOR_PYTHON"), "-")
 	cmd.Stdin = strings.NewReader(updateStockByEastMoneyScriptContent)
 
 	cmd.Stdout = os.Stdout

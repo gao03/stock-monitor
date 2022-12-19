@@ -80,7 +80,7 @@ func IsConfigRefreshToday() bool {
 }
 
 func HasEastMoneyAccount() bool {
-	return os.Getenv("EAST_MONEY_USER") != ""
+	return os.Getenv("EAST_MONEY_USER") != "" && os.Getenv("STOCK_MONITOR_PYTHON") != ""
 }
 
 func WriteConfig(lst *[]StockConfig) {
