@@ -5,18 +5,34 @@ import (
 	"github.com/samber/lo"
 	"log"
 	"monitor/api"
+	"monitor/utils"
+	"regexp"
 )
 
 func InputNewStock() *api.StockCurrentInfo {
-	code, err := zenity.Entry("输入股票编号：")
+	codeOrName, err := zenity.Entry("输入股票编号/名称：")
 	if err != nil {
 		log.Fatal(err)
 		return nil
 	}
 
-	stockList := api.QueryOneStockInfoByCode(code)
+	isAlphaNum := regexp.MustCompile(`^[A-Za-z0-9]+$`).MatchString
+	var stockList []api.StockCurrentInfo
+	if isAlphaNum(codeOrName) {
+		stockList = api.QueryOneStockInfoByCode(codeOrName)
+	} else {
+		stockByNameList := utils.SearchStockByName(codeOrName)
+		stockList = lo.Map(stockByNameList, func(item utils.StockBaseInfo, index int) api.StockCurrentInfo {
+			return api.StockCurrentInfo{
+				Code: item.Code,
+				Type: item.Type,
+				Name: item.Name,
+			}
+		})
+	}
+
 	if len(stockList) == 0 {
-		_ = zenity.Error("Code不存在：" + code)
+		_ = zenity.Error("股票不存在：" + codeOrName)
 		return nil
 	}
 	var stock api.StockCurrentInfo

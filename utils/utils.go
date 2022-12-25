@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/samber/lo"
 	"log"
 	"math"
 	"os"
@@ -255,4 +256,33 @@ func If[T any](condition bool, trueVal, falseVal T) T {
 
 func IsTrue(b *bool) bool {
 	return b != nil && *b
+}
+
+type StockBaseInfo struct {
+	Code string `json:"code"`
+	Type int    `json:"type"` // 0-SH,1-SZ
+	Name string `json:"name"`
+}
+
+//go:embed assets/all_stock.json
+var allStockStr string
+
+func SearchStockByName(name string) []StockBaseInfo {
+	var result []StockBaseInfo
+
+	err := json.Unmarshal([]byte(allStockStr), &result)
+
+	if err != nil {
+		return []StockBaseInfo{}
+	}
+
+	lst := lo.Filter(result, func(item StockBaseInfo, index int) bool {
+		return item.Name == name
+	})
+	if len(lst) > 0 {
+		return lst
+	}
+	return lo.Filter(result, func(item StockBaseInfo, index int) bool {
+		return strings.Contains(item.Name, name)
+	})
 }
