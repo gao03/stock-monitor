@@ -200,6 +200,13 @@ func addSubMenuItem(menu *systray.MenuItem, title string, onClick func()) *systr
 	}
 	return subMenu
 }
+func addSubMenuItemCheckbox(menu *systray.MenuItem, title string, checked bool, onClick func()) *systray.MenuItem {
+	subMenu := menu.AddSubMenuItemCheckbox(title, "", checked)
+	if onClick != nil {
+		utils.On(subMenu.ClickedCh, onClick)
+	}
+	return subMenu
+}
 
 func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem) {
 	if utils.CheckIsMarketClose() {
@@ -256,27 +263,16 @@ func OpenXueQiuUrl(item config.StockConfig) func() {
 func addSubMenuToStock(menu *systray.MenuItem, item config.StockConfig) {
 	addSubMenuItem(menu, "删除", removeStockFromConfig(item))
 
-	// showInTitle 取反
-	showInTitleNewVal := item.ShowInTitle == nil || !*item.ShowInTitle
-	showInTitleMessage := "置顶"
-	if !showInTitleNewVal {
-		showInTitleMessage = "取消置顶"
-	}
-	addSubMenuItem(menu, showInTitleMessage, updateStockShowInTitle(item, showInTitleNewVal, showInTitleMessage))
+	addSubMenuItemCheckbox(menu, "置顶", item.ShowInTitle != nil && *item.ShowInTitle, updateStockShowInTitle(item))
 
-	addSubMenuItem(menu, "添加监控", addStockMonitorRule(item))
+	addSubMenuItem(menu, "监控", addStockMonitorRule(item))
 	if len(item.MonitorRules) > 0 {
 		for _, rule := range item.MonitorRules {
 			addSubMenuItem(menu, "监控 "+rule, removeStockMonitorRule(item, rule))
 		}
 	}
 
-	enableRealTimePicNewVal := !item.EnableRealTimePic
-	enableRealTimePicMessage := "启用时分图"
-	if !enableRealTimePicNewVal {
-		enableRealTimePicMessage = "关闭时分图"
-	}
-	addSubMenuItem(menu, enableRealTimePicMessage, updateStockEnableRealTimePic(item, enableRealTimePicNewVal))
+	addSubMenuItemCheckbox(menu, "时分图", item.EnableRealTimePic, updateStockEnableRealTimePic(item))
 
 	if item.EnableRealTimePic {
 		figureMenuItem := addSubMenuItem(menu, "", nil)
@@ -286,8 +282,9 @@ func addSubMenuToStock(menu *systray.MenuItem, item config.StockConfig) {
 	}
 }
 
-func updateStockEnableRealTimePic(stock config.StockConfig, newVal bool) func() {
+func updateStockEnableRealTimePic(stock config.StockConfig) func() {
 	return func() {
+		newVal := !stock.EnableRealTimePic
 		op := lo.If(newVal, "启用").Else("关闭")
 		confirm := dialog.Confirm("确定要" + op + stock.Name + "的时分图 ?")
 		if !confirm {
@@ -304,8 +301,13 @@ func updateStockEnableRealTimePic(stock config.StockConfig, newVal bool) func() 
 	}
 }
 
-func updateStockShowInTitle(stock config.StockConfig, newVal bool, opMessage string) func() {
+func updateStockShowInTitle(stock config.StockConfig) func() {
 	return func() {
+		newVal := stock.ShowInTitle == nil || !*stock.ShowInTitle
+		opMessage := "置顶"
+		if !newVal {
+			opMessage = "取消置顶"
+		}
 		confirm := dialog.Confirm("确定要" + opMessage + stock.Name + " ?")
 		if !confirm {
 			return

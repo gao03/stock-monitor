@@ -3,7 +3,7 @@ module monitor
 go 1.18
 
 require (
-	github.com/getlantern/systray v1.1.0
+	github.com/getlantern/systray v1.2.0
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-rod/rod v0.101.8
 	github.com/guonaihong/gout v0.2.10
@@ -46,4 +46,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
 
-replace github.com/getlantern/systray v1.1.0 => github.com/gao03/systray v1.1.1-0.20220103140602-b555e1af82ab
+replace github.com/getlantern/systray v1.2.0 => github.com/gao03/systray v1.1.1-0.20221228035310-71c550cb6f9d
