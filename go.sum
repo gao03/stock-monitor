@@ -5,8 +5,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f h1:OGqDDftRTwrvUoL6pOG7rYTmWsTCvyEWFsMjg+HcOaA=
 github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f/go.mod h1:Dv9D0NUlAsaQcGQZa5kc5mqR9ua72SmA8VXi4cd+cBw=
-github.com/gao03/systray v1.1.1-0.20221228035310-71c550cb6f9d h1:Ge0YXa1IxbwnXJrPCtVYCqQJpv2eX6bpsolKvEHlBhw=
-github.com/gao03/systray v1.1.1-0.20221228035310-71c550cb6f9d/go.mod h1:ijJ+/Z3hEjYvOS2duk0VazUB3f0Rl2ICoIqNq3zgvuQ=
+github.com/gao03/systray v1.1.1-0.20230104030122-a728dd4c3ad8 h1:eqrnfkMtUVO40z1d/A8jiAPnCW9h9wbF2fF9N6NtDTY=
+github.com/gao03/systray v1.1.1-0.20230104030122-a728dd4c3ad8/go.mod h1:ijJ+/Z3hEjYvOS2duk0VazUB3f0Rl2ICoIqNq3zgvuQ=
 github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 h1:NRUJuo3v3WGC/g5YiyF790gut6oQr5f3FBI88Wv0dx4=
 github.com/getlantern/context v0.0.0-20190109183933-c447772a6520/go.mod h1:L+mq6/vvYHKjCX2oez0CgEAJmbq1fbb/oNJIWQkBybY=
 github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7 h1:6uJ+sZ/e03gkbqZ0kUG6mfKoqDb4XMAzMIwlajq19So=

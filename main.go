@@ -103,16 +103,14 @@ func onReady() {
 		updateStockInfo(&flag, codeToMenuItemMap)
 	})
 
-	time.AfterFunc(duration, func() {
-		systray.AddSeparator()
-		addMenuItem("配置", openConfigFileAndWait)
-		addMenuItem("重启", restartSelf)
-		if config.HasEastMoneyAccount() {
-			addMenuItem("刷新", updateAndRestart)
-		}
-		addMenuItem("添加", addStockToConfig)
-		addMenuItem("退出", systray.Quit)
-	})
+	systray.EnableRightMenu()
+	addRightMenuItem("配置", openConfigFileAndWait)
+	addRightMenuItem("重启", restartSelf)
+	if config.HasEastMoneyAccount() {
+		addRightMenuItem("刷新", updateAndRestart)
+	}
+	addRightMenuItem("添加", addStockToConfig)
+	addRightMenuItem("退出", systray.Quit)
 }
 
 func updateAndRestart() {
@@ -189,6 +187,12 @@ func restartSelf() {
 
 func addMenuItem(title string, onClick func()) *systray.MenuItem {
 	menu := systray.AddMenuItem(title, "")
+	utils.On(menu.ClickedCh, onClick)
+	return menu
+}
+
+func addRightMenuItem(title string, onClick func()) *systray.MenuItem {
+	menu := systray.AddRightMenuItem(title, "")
 	utils.On(menu.ClickedCh, onClick)
 	return menu
 }

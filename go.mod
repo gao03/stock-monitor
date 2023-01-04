@@ -46,4 +46,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
 
-replace github.com/getlantern/systray v1.2.0 => github.com/gao03/systray v1.1.1-0.20221228035310-71c550cb6f9d
+replace github.com/getlantern/systray v1.2.0 => github.com/gao03/systray v1.1.1-0.20230104030122-a728dd4c3ad8

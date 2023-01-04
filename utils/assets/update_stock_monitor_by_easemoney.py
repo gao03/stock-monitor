@@ -129,15 +129,6 @@ WchaWUXauj9Lrhz58/6AE/NF0aMolxIGpsi+ST\n2hSHPu3GSXMdhPCkWQIDAQAB\n-----END PUBLI
         time.sleep(1)
         return self._recognize_verification_code(retry + 1)
 
-    def _manual_verification_code(self):
-        self.random_number = "0.903%d" % random.randint(100000, 900000)
-        img_content = self._get_code_image()
-        img_filename = "/tmp/eastmoney.png"
-        with open(img_filename, "wb") as img_f:
-            img_f.write(img_content)
-        subprocess.call(("open", img_filename))
-        return input("输入验证码")
-
     def _get_code_image(self) -> bytes:
         req = self.s.get("%s%s" % (JywgUrl.YZM, self.random_number))
         return req.content
@@ -171,11 +162,8 @@ WchaWUXauj9Lrhz58/6AE/NF0aMolxIGpsi+ST\n2hSHPu3GSXMdhPCkWQIDAQAB\n-----END PUBLI
                 print("heartbeat failed, login again")
         print("need login")
         ocr_code_retry_count = 5
-        for i in range(ocr_code_retry_count + 1):
-            identify_code = (
-                self._recognize_verification_code() if i < ocr_code_retry_count
-                else self._manual_verification_code()
-            )
+        for i in range(ocr_code_retry_count):
+            identify_code = self._recognize_verification_code()
             login_res = self.s.post(
                 JywgUrl.AUTHENTICATION,
                 data={
