@@ -28,6 +28,9 @@ var titleLength = 0
 // MonitorPushCache 价格监控的提醒，每个股票每个提醒 5分钟发一次
 var MonitorPushCache = cache.New(5*time.Minute, 10*time.Minute)
 
+// ReturnCostPushCache 回本的监控提醒，一天只发一次
+var ReturnCostPushCache = cache.New(10*time.Hour, 10*time.Hour)
+
 func main() {
 	if len(os.Args) == 1 {
 		// 如果传了参数，就不用后台运行的模式
@@ -372,13 +375,13 @@ func checkStockMonitorPrice(stock *entity.Stock) {
 	costPrice := stock.Config.CostPrice
 	currentPrice := stock.CurrentInfo.Price
 
-	checkCacheAndNotify := func(rule string) {
+	checkCacheAndNotify := func(rule string, cache *cache.Cache) {
 		var cacheKey = stock.Code + "-" + rule
-		_, found := MonitorPushCache.Get(cacheKey)
+		_, found := cache.Get(cacheKey)
 		if found {
 			return
 		}
-		MonitorPushCache.SetDefault(cacheKey, "")
+		cache.SetDefault(cacheKey, "")
 		message := "当前价格" + utils.FormatPrice(currentPrice) + "; 涨幅" + utils.FloatToStr(stock.CurrentInfo.Diff) + "%"
 		subtitle := "规则：" + rule
 		utils.Notify(stock.CurrentInfo.Name, subtitle, message, GenerateXueqiuUrl(stock.Config))
@@ -387,13 +390,13 @@ func checkStockMonitorPrice(stock *entity.Stock) {
 	for _, rule := range rules {
 		result := utils.CheckMonitorPrice(rule, todayBasePrice, costPrice, currentPrice)
 		if result {
-			checkCacheAndNotify(rule)
+			checkCacheAndNotify(rule, MonitorPushCache)
 		}
 	}
 
 	if stock.Config.Position > 0 && costPrice > todayBasePrice && costPrice < currentPrice {
 		// 持仓大于0 且 持仓成本大于昨天收盘价格 且 持仓成本小于当前价格
-		checkCacheAndNotify("回本")
+		checkCacheAndNotify("回本", ReturnCostPushCache)
 	}
 
 }
