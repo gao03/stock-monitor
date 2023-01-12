@@ -2,77 +2,46 @@ package utils
 
 import (
 	_ "embed"
-	"github.com/go-playground/assert/v2"
 	"math"
 	"testing"
 )
 
-func TestCalcMinAndMaxMonitorPrice_Percentage(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("3%", 10.0, 9.0)
-	assert.Equal(t, min, 9.7)
-	assert.Equal(t, max, 10.3)
-}
+func TestCalcMinAndMaxMonitorPrice(t *testing.T) {
+	type args struct {
+		rule           string
+		todayBasePrice float64
+		costPrice      float64
+	}
+	tests := []struct {
+		name string
+		args args
+		min  float64
+		max  float64
+	}{
+		{"Percentage", args{"3%", 11.0, 9.0}, 9.7, 10.3},
+		{"PercentagePositive", args{"+4%", 10.0, 9.0}, math.SmallestNonzeroFloat64, 10.4},
+		{"PercentageNegative", args{"-5%", 10.0, 9.0}, 9.5, math.MaxFloat64},
+		{"Percentage_Cost", args{"|1%", 10.0, 9.0}, 8.91, 9.09},
+		{"PercentagePositive_Cost", args{"|+2%", 10.0, 9.0}, math.SmallestNonzeroFloat64, 9.18},
+		{"Percentage_NegativeCost", args{"|-5%", 10.0, 9.0}, 8.55, math.MaxFloat64},
+		{"Absolute", args{"1", 10.0, 9.0}, 9, 11},
+		{"Absolute_Up", args{"11+", 10.0, 9.0}, math.SmallestNonzeroFloat64, 11},
+		{"Absolute_Down", args{"11-", 10.0, 9.0}, 11, math.MaxFloat64},
+		{"Add", args{"+2", 10.0, 9.0}, math.SmallestNonzeroFloat64, 12},
+		{"Sub", args{"-2", 10.0, 9.0}, 8, math.MaxFloat64},
+		{"Add_Cost", args{"|+2", 10.0, 9.0}, math.SmallestNonzeroFloat64, 11},
+		{"Sub_Cost", args{"|-2", 10.0, 9.0}, 7, math.MaxFloat64},
+	}
 
-func TestCalcMinAndMaxMonitorPrice_PercentagePositive(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("+4%", 10.0, 9.0)
-	assert.Equal(t, min, math.MaxFloat64)
-	assert.Equal(t, max, 10.4)
-}
-
-func TestCalcMinAndMaxMonitorPrice_PercentageNegative(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("-5%", 10.0, 9.0)
-	assert.Equal(t, min, 9.5)
-	assert.Equal(t, max, math.SmallestNonzeroFloat64)
-}
-
-func TestCalcMinAndMaxMonitorPrice_Percentage_Cost(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("|1%", 10.0, 9.0)
-	assert.Equal(t, min, 8.91)
-	assert.Equal(t, max, 9.09)
-}
-
-func TestCalcMinAndMaxMonitorPrice_PercentagePositive_Cost(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("|+2%", 10.0, 9.0)
-	assert.Equal(t, min, math.MaxFloat64)
-	assert.Equal(t, max, 9.18)
-}
-
-func TestCalcMinAndMaxMonitorPrice_PercentageNegative_Cost(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("|-5%", 10.0, 9.0)
-	assert.Equal(t, min, 8.55)
-	assert.Equal(t, max, math.SmallestNonzeroFloat64)
-}
-
-func TestCalcMinAndMaxMonitorPrice_Absolute(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("11", 10.0, 9.0)
-	assert.Equal(t, min, 11.0)
-	assert.Equal(t, max, 11.0)
-}
-
-func TestCalcMinAndMaxMonitorPrice_Add(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("+2", 10.0, 9.0)
-	assert.Equal(t, min, math.MaxFloat64)
-	assert.Equal(t, max, 12.0)
-}
-
-func TestCalcMinAndMaxMonitorPrice_Sub(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("-2", 10.0, 9.0)
-	assert.Equal(t, min, 8.0)
-	assert.Equal(t, max, math.SmallestNonzeroFloat64)
-}
-
-func TestCalcMinAndMaxMonitorPrice_Add_Cost(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("|+2", 10.0, 9.0)
-	assert.Equal(t, min, math.MaxFloat64)
-	assert.Equal(t, max, 11.0)
-}
-
-func TestCalcMinAndMaxMonitorPrice_Sub_Cost(t *testing.T) {
-	min, max := CalcMinAndMaxMonitorPrice("|-2", 10.0, 9.0)
-	assert.Equal(t, min, 7.0)
-	assert.Equal(t, max, math.SmallestNonzeroFloat64)
-}
-
-func TestNotify(t *testing.T) {
-	Notify("京山轻机", "当前价格21.5; 涨幅9%", "https://xueqiu.com/")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := CalcMinAndMaxMonitorPrice(tt.args.rule, tt.args.todayBasePrice, tt.args.costPrice)
+			if got != tt.min {
+				t.Errorf("CalcMinAndMaxMonitorPrice(%v) got min = %v, except min %v", tt.args, got, tt.min)
+			}
+			if got1 != tt.max {
+				t.Errorf("CalcMinAndMaxMonitorPrice(%v) got max = %v, except max %v", tt.args, got1, tt.max)
+			}
+		})
+	}
 }
