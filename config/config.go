@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"monitor/entity"
 	"monitor/utils"
 	"os"
 	"time"
@@ -11,7 +12,7 @@ import (
 
 var FILE_NAME = utils.ExpandUser("~/.config/StockMonitor.json")
 
-var LATEST_CONFIG *[]StockConfig
+var LATEST_CONFIG *[]entity.StockConfig
 
 type ShowInTitleType bool
 
@@ -28,18 +29,7 @@ func (e *ShowInTitleType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type StockConfig struct {
-	Code              string   `json:"code"`
-	Type              *int     `json:"type"`
-	CostPrice         float64  `json:"cost"`
-	Position          float64  `json:"position"`
-	Name              string   `json:"name"`
-	ShowInTitle       *bool    `json:"showInTitle"`
-	EnableRealTimePic bool     `json:"enableRealTimePic"`
-	MonitorRules      []string `json:"monitorRules"`
-}
-
-func ReadConfig() *[]StockConfig {
+func ReadConfig() *[]entity.StockConfig {
 	if LATEST_CONFIG != nil {
 		return LATEST_CONFIG
 	}
@@ -48,8 +38,8 @@ func ReadConfig() *[]StockConfig {
 	return LATEST_CONFIG
 }
 
-func ReadConfigFromFile() *[]StockConfig {
-	var result []StockConfig
+func ReadConfigFromFile() *[]entity.StockConfig {
+	var result []entity.StockConfig
 
 	data, err := os.ReadFile(FILE_NAME)
 	if err != nil {
@@ -83,7 +73,7 @@ func HasEastMoneyAccount() bool {
 	return os.Getenv("EAST_MONEY_USER") != "" && os.Getenv("STOCK_MONITOR_PYTHON") != ""
 }
 
-func WriteConfig(lst *[]StockConfig) {
+func WriteConfig(lst *[]entity.StockConfig) {
 	data, err := json.MarshalIndent(*lst, "", "  ")
 	if err != nil {
 		log.Fatalln("err in json ", err)

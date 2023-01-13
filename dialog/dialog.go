@@ -5,11 +5,12 @@ import (
 	"github.com/samber/lo"
 	"log"
 	"monitor/api"
+	"monitor/entity"
 	"monitor/utils"
 	"regexp"
 )
 
-func InputNewStock() *api.StockCurrentInfo {
+func InputNewStock() *entity.StockCurrentInfo {
 	codeOrName, err := zenity.Entry("输入股票编号/名称：")
 	if err != nil {
 		log.Fatal(err)
@@ -17,13 +18,13 @@ func InputNewStock() *api.StockCurrentInfo {
 	}
 
 	isAlphaNum := regexp.MustCompile(`^[A-Za-z0-9]+$`).MatchString
-	var stockList []api.StockCurrentInfo
+	var stockList []entity.StockCurrentInfo
 	if isAlphaNum(codeOrName) {
 		stockList = api.QueryOneStockInfoByCode(codeOrName)
 	} else {
 		stockByNameList := utils.SearchStockByName(codeOrName)
-		stockList = lo.Map(stockByNameList, func(item utils.StockBaseInfo, index int) api.StockCurrentInfo {
-			return api.StockCurrentInfo{
+		stockList = lo.Map(stockByNameList, func(item utils.StockBaseInfo, index int) entity.StockCurrentInfo {
+			return entity.StockCurrentInfo{
 				Code: item.Code,
 				Type: item.Type,
 				Name: item.Name,
@@ -35,9 +36,9 @@ func InputNewStock() *api.StockCurrentInfo {
 		_ = zenity.Error("股票不存在：" + codeOrName)
 		return nil
 	}
-	var stock api.StockCurrentInfo
+	var stock entity.StockCurrentInfo
 	if len(stockList) > 1 {
-		stockNameList := lo.Map(stockList, func(item api.StockCurrentInfo, index int) string {
+		stockNameList := lo.Map(stockList, func(item entity.StockCurrentInfo, index int) string {
 			return item.Name
 		})
 		selectStockName, err := zenity.ListItems("该Code对应多个股票，请选择", stockNameList...)
@@ -45,7 +46,7 @@ func InputNewStock() *api.StockCurrentInfo {
 			log.Println(err)
 			return nil
 		}
-		fl := lo.Filter(stockList, func(item api.StockCurrentInfo, index int) bool {
+		fl := lo.Filter(stockList, func(item entity.StockCurrentInfo, index int) bool {
 			return item.Name == selectStockName
 		})
 		if len(fl) == 0 {

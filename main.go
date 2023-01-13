@@ -129,7 +129,7 @@ func addStockToConfig() {
 		return
 	}
 
-	stock := config.StockConfig{
+	stock := entity.StockConfig{
 		Code:              stockCurrentInfo.Code,
 		Type:              &stockCurrentInfo.Type,
 		Name:              stockCurrentInfo.Name,
@@ -143,22 +143,22 @@ func addStockToConfig() {
 	restartSelf()
 }
 
-func removeStockFromConfig(stock config.StockConfig) func() {
+func removeStockFromConfig(stock entity.StockConfig) func() {
 	return func() {
 		confirm := dialog.Confirm("确定要删除 " + stock.Name + " ?")
 		if !confirm {
 			return
 		}
 
-		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
-			return lo.Filter(*stockList, func(item config.StockConfig, index int) bool {
+		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			return lo.Filter(*stockList, func(item entity.StockConfig, index int) bool {
 				return item.Code != stock.Code
 			})
 		})
 	}
 }
 
-func ChangeConfigAndRestart(changeFunc func(stockList *[]config.StockConfig) []config.StockConfig) {
+func ChangeConfigAndRestart(changeFunc func(stockList *[]entity.StockConfig) []entity.StockConfig) {
 	stockList := config.ReadConfigFromFile()
 	newConfig := changeFunc(stockList)
 	sort.Slice(newConfig, func(i, j int) bool {
@@ -261,13 +261,13 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 	systray.SetTitle(generateTitle(flag, stockList))
 }
 
-func OpenXueQiuUrl(item config.StockConfig) func() {
+func OpenXueQiuUrl(item entity.StockConfig) func() {
 	return func() {
 		exec.Command("open", GenerateXueqiuUrl(item)).Start()
 	}
 }
 
-func addSubMenuToStock(menu *systray.MenuItem, item config.StockConfig) {
+func addSubMenuToStock(menu *systray.MenuItem, item entity.StockConfig) {
 	addSubMenuItem(menu, "删除", removeStockFromConfig(item))
 
 	addSubMenuItemCheckbox(menu, "置顶", item.ShowInTitle != nil && *item.ShowInTitle, updateStockShowInTitle(item))
@@ -289,7 +289,7 @@ func addSubMenuToStock(menu *systray.MenuItem, item config.StockConfig) {
 	}
 }
 
-func updateStockEnableRealTimePic(stock config.StockConfig) func() {
+func updateStockEnableRealTimePic(stock entity.StockConfig) func() {
 	return func() {
 		newVal := !stock.EnableRealTimePic
 		op := lo.If(newVal, "启用").Else("关闭")
@@ -297,8 +297,8 @@ func updateStockEnableRealTimePic(stock config.StockConfig) func() {
 		if !confirm {
 			return
 		}
-		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
-			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.EnableRealTimePic = newVal
 				}
@@ -308,7 +308,7 @@ func updateStockEnableRealTimePic(stock config.StockConfig) func() {
 	}
 }
 
-func updateStockShowInTitle(stock config.StockConfig) func() {
+func updateStockShowInTitle(stock entity.StockConfig) func() {
 	return func() {
 		newVal := stock.ShowInTitle == nil || !*stock.ShowInTitle
 		opMessage := "置顶"
@@ -319,8 +319,8 @@ func updateStockShowInTitle(stock config.StockConfig) func() {
 		if !confirm {
 			return
 		}
-		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
-			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.ShowInTitle = BoolPointer(newVal)
 				}
@@ -330,14 +330,14 @@ func updateStockShowInTitle(stock config.StockConfig) func() {
 	}
 }
 
-func addStockMonitorRule(stock config.StockConfig) func() {
+func addStockMonitorRule(stock entity.StockConfig) func() {
 	return func() {
 		rule := dialog.Input("输入给 " + stock.Name + " 添加的监控规则：")
 		if rule == "" {
 			return
 		}
-		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
-			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.MonitorRules = append(item.MonitorRules, rule)
 				}
@@ -347,14 +347,14 @@ func addStockMonitorRule(stock config.StockConfig) func() {
 	}
 }
 
-func removeStockMonitorRule(stock config.StockConfig, rule string) func() {
+func removeStockMonitorRule(stock entity.StockConfig, rule string) func() {
 	return func() {
 		confirm := dialog.Confirm("确定要删除 " + stock.Name + " 的监控规则[" + rule + "] ?")
 		if !confirm {
 			return
 		}
-		ChangeConfigAndRestart(func(stockList *[]config.StockConfig) []config.StockConfig {
-			return lo.Map(*stockList, func(item config.StockConfig, index int) config.StockConfig {
+		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.MonitorRules = lo.Filter(item.MonitorRules, func(iu string, idx int) bool {
 						return iu != rule
@@ -401,7 +401,7 @@ func checkStockMonitorPrice(stock *entity.Stock) {
 
 }
 
-func GenerateXueqiuUrl(config config.StockConfig) string {
+func GenerateXueqiuUrl(config entity.StockConfig) string {
 	url := "https://xueqiu.com/S/"
 	typeStr := ""
 	switch *config.Type {
@@ -420,11 +420,17 @@ func updateSubMenuTitle(stock *entity.Stock) {
 	if stock.Config.Position > 0 {
 		positionDiff = "\t" + utils.CalcReturn(stock.Config.CostPrice, stock.CurrentInfo.Price)
 	}
-	var result = stock.CurrentInfo.Name + "\t  " +
+	name := []rune(stock.CurrentInfo.Name)
+	name = lo.If(len(name) <= 4, name).
+		//ElseIf(len(name) < 4)
+		Else(name[:4])
+	result := fmt.Sprintf("%-4s\t%-4s\t%-4s%4s", string(name), utils.FormatPrice(stock.CurrentInfo.Price),
+		utils.FloatToStr(stock.CurrentInfo.Diff), positionDiff)
+	result = strings.TrimSpace(result)
+	/*	var result = string(name) + "\t  " +
 		utils.FormatPrice(stock.CurrentInfo.Price) + "\t" +
 		utils.FloatToStr(stock.CurrentInfo.Diff) +
-		positionDiff
-
+		positionDiff*/
 	stock.MenuItem.SetTitle(result)
 }
 
@@ -487,7 +493,7 @@ func checkAndCompleteConfig() {
 	}
 	infoMap := api.QueryStockInfo(stockList)
 
-	var validStock []config.StockConfig
+	var validStock []entity.StockConfig
 
 	for _, stock := range *stockList {
 		info, ok := infoMap[stock.Code]
