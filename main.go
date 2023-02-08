@@ -421,9 +421,9 @@ func updateSubMenuTitle(stock *entity.Stock) {
 		positionDiff = "\t" + utils.CalcReturn(stock.Config.CostPrice, stock.CurrentInfo.Price)
 	}
 	name := []rune(stock.CurrentInfo.Name)
-	name = lo.If(len(name) <= 4, name).
-		//ElseIf(len(name) < 4)
-		Else(name[:4])
+	if len(name) > 4 {
+		name = name[:4]
+	}
 	result := fmt.Sprintf("%-4s\t%-4s\t%-4s%4s", string(name), utils.FormatPrice(stock.CurrentInfo.Price),
 		utils.FloatToStr(stock.CurrentInfo.Diff), positionDiff)
 	result = strings.TrimSpace(result)

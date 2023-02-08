@@ -33,3 +33,9 @@ type StockCurrentInfo struct {
 	BasePrice    float64 `json:"f18"`
 	StockCode    string  `json:"f232"` // 转债对应的正股
 }
+
+// StockOutPrice 盘前/盘后价格
+type StockOutPrice struct {
+	Price float64
+	Diff  float64
+}

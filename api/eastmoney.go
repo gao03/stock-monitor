@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"monitor/entity"
 	"monitor/utils"
 	"strconv"
@@ -27,6 +28,14 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 	}
 	for _, info := range response.Data.StockInfoList {
 		info.Name = strings.ReplaceAll(info.Name, " ", "")
+		if info.Type == 105 || info.Type == 106 {
+			outInfo := QueryStockOutInfo(info)
+			if outInfo != nil {
+				log.Printf("stock out info [%s]: %v", info.Code, outInfo)
+				info.Price = outInfo.Price
+				info.Diff = outInfo.Diff
+			}
+		}
 		result[info.Code] = info
 	}
 	return result

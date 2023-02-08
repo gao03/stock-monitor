@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/samber/lo"
 	"log"
 	"math"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/samber/lo"
 )
 
 func ToJson(v interface{}) string {
@@ -87,7 +88,7 @@ func CheckIsMarketClose() bool {
 
 	t := time.Now()
 	minute := t.Hour()*60 + t.Minute()
-	return minute > 11*60+40 && minute < 13*60
+	return minute > 12*60+10 && minute < 13*60
 }
 
 func CheckIsMarketCloseDay() bool {
@@ -96,10 +97,10 @@ func CheckIsMarketCloseDay() bool {
 		return true
 	}
 
-	minute := t.Hour()*60 + t.Minute()
+	// minute := t.Hour()*60 + t.Minute()
 
-	// 9.15 - 11:40, 13:00-15:10 中间跑，其他时间休息
-	if minute < 9*60+15 || minute > 15*60+10 {
+	// 9.15 - 20:10 中间跑，其他时间休息
+	if t.Hour() < 9 || t.Hour() > 20 {
 		return true
 	}
 
