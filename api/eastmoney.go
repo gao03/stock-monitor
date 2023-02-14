@@ -1,13 +1,13 @@
 package api
 
 import (
-	"log"
 	"monitor/entity"
 	"monitor/utils"
 	"strconv"
 	"strings"
+
+	"github.com/guonaihong/gout"
 )
-import "github.com/guonaihong/gout"
 
 type ApiResponse struct {
 	Data ApiData `json:"data"`
@@ -28,12 +28,14 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 	}
 	for _, info := range response.Data.StockInfoList {
 		info.Name = strings.ReplaceAll(info.Name, " ", "")
-		if info.Type == 105 || info.Type == 106 {
-			outInfo := QueryStockOutInfo(info)
-			if outInfo != nil {
-				log.Printf("stock out info [%s]: %v", info.Code, outInfo)
-				info.Price = outInfo.Price
-				info.Diff = outInfo.Diff
+		if info.Type == 105 || info.Type == 106 || info.Type == 107 {
+			if utils.CheckNowBefore(22, 30) && utils.CheckNowAfter(5, 0) {
+				outInfo := QueryStockOutInfo(info)
+				if outInfo != nil {
+					// log.Printf("stock out info [%s]: %v", info.Code, outInfo)
+					info.Price = outInfo.Price
+					info.Diff = outInfo.Diff
+				}
 			}
 		}
 		result[info.Code] = info
@@ -59,7 +61,7 @@ func stockCodeToApiCode(stock entity.StockConfig) string {
 		return strconv.Itoa(*stock.Type) + "." + stock.Code
 	}
 	// [0, 1, 105, 106, 116] // 深A、沪A、美股1、美股2、港股
-	typeList := []int{0, 1, 105, 106, 116}
+	typeList := []int{0, 1, 105, 106, 107, 116}
 
 	return strings.Join(utils.MapToStr(&typeList, func(i int) string {
 		return strconv.Itoa(i) + "." + s

@@ -10,10 +10,6 @@ import (
 )
 
 func QueryStockOutInfo(stock entity.StockCurrentInfo) *entity.StockOutPrice {
-	if stock.Type != 105 && stock.Type != 106 {
-		return nil
-	}
-
 	var response string
 	err := gout.GET("https://hq.sinajs.cn/rn").
 		SetQuery(gout.H{"list": "gb_" + strings.ToLower(stock.Code)}).

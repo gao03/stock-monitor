@@ -3,10 +3,6 @@ package main
 import (
 	_ "embed"
 	"fmt"
-	"github.com/getlantern/systray"
-	"github.com/kardianos/osext"
-	"github.com/patrickmn/go-cache"
-	"github.com/samber/lo"
 	"log"
 	"monitor/api"
 	"monitor/config"
@@ -21,6 +17,11 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/getlantern/systray"
+	"github.com/kardianos/osext"
+	"github.com/patrickmn/go-cache"
+	"github.com/samber/lo"
 )
 
 var titleLength = 0
@@ -216,12 +217,12 @@ func addSubMenuItemCheckbox(menu *systray.MenuItem, title string, checked bool, 
 }
 
 func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem) {
-	if utils.CheckIsMarketClose() {
-		// map 为空表示程序还没运行，先让它执行一次
-		if len(codeToMenuItemMap) > 0 {
-			return
-		}
-	}
+	// if utils.CheckIsMarketClose() {
+	// 	// map 为空表示程序还没运行，先让它执行一次
+	// 	if len(codeToMenuItemMap) > 0 {
+	// 		return
+	// 	}
+	// }
 
 	stockConfigList := config.ReadConfig()
 	if len(*stockConfigList) == 0 {

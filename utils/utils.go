@@ -100,9 +100,9 @@ func CheckIsMarketCloseDay() bool {
 	// minute := t.Hour()*60 + t.Minute()
 
 	// 9.15 - 20:10 中间跑，其他时间休息
-	if t.Hour() < 9 || t.Hour() > 20 {
-		return true
-	}
+	// if t.Hour() < 9 || t.Hour() > 20 {
+	// 	return true
+	// }
 
 	return false
 }
@@ -286,4 +286,20 @@ func SearchStockByName(name string) []StockBaseInfo {
 	return lo.Filter(result, func(item StockBaseInfo, index int) bool {
 		return strings.Contains(item.Name, name)
 	})
+}
+
+func CheckNowBetween(startHour, startMinute, endHour, endMinute int) bool {
+	return CheckNowAfter(startHour, startMinute) && CheckNowBefore(endHour, endMinute)
+}
+
+func CheckNowBefore(hour, minute int) bool {
+	now := time.Now()
+	nm := now.Hour()*60 + now.Minute()
+	return nm < hour*60+minute
+}
+
+func CheckNowAfter(hour, minute int) bool {
+	now := time.Now()
+	nm := now.Hour()*60 + now.Minute()
+	return nm > hour*60+minute
 }
