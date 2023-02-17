@@ -125,7 +125,7 @@ func updateAndRestart() {
 }
 
 func addStockToConfig() {
-	stockCurrentInfo := dialog.InputNewStock()
+	stockCurrentInfo, showInTitle := dialog.InputNewStock()
 	if stockCurrentInfo == nil {
 		return
 	}
@@ -134,7 +134,7 @@ func addStockToConfig() {
 		Code:              stockCurrentInfo.Code,
 		Type:              &stockCurrentInfo.Type,
 		Name:              stockCurrentInfo.Name,
-		ShowInTitle:       BoolPointer(false),
+		ShowInTitle:       BoolPointer(showInTitle),
 		EnableRealTimePic: false,
 	}
 	stockList := config.ReadConfigFromFile()
