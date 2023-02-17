@@ -303,3 +303,7 @@ func CheckNowAfter(hour, minute int) bool {
 	nm := now.Hour()*60 + now.Minute()
 	return nm > hour*60+minute
 }
+
+func BoolPointer(b bool) *bool {
+	return &b
+}

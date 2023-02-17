@@ -8,23 +8,42 @@ import (
 	"monitor/entity"
 	"monitor/utils"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
-func InputNewStock() (*entity.StockCurrentInfo, bool) {
-	codeOrName, err := zenity.Entry("输入 股票编号/名称[.1/0表示是否展示在状态栏，默认0]")
+func InputNewStock() *entity.StockConfig {
+	codeOrName, err := zenity.Entry("输入 股票编号/名称[#是否置顶][#持仓成本][#持仓数量][#是否启用时分图]")
 	if err != nil {
 		log.Fatal(err)
-		return nil, false
+		return nil
 	}
 
-	showInTitle := false
-	inputList := strings.Split(codeOrName, ".")
+	inputList := strings.Split(codeOrName, "#")
+	stock := entity.StockConfig{
+		ShowInTitle:       utils.BoolPointer(false),
+		EnableRealTimePic: false,
+	}
 	if len(inputList) > 1 {
 		// 后续可以支持其他配置
 		codeOrName = inputList[0]
 		// 第二个字段是是否展示在状态栏
-		showInTitle = inputList[1] == "1"
+		stock.ShowInTitle = utils.BoolPointer(inputList[1] == "1")
+		if len(inputList) > 2 {
+			data, err := strconv.ParseFloat(inputList[2], 64)
+			if err != nil {
+				stock.CostPrice = data
+			}
+		}
+		if len(inputList) > 3 {
+			data, err := strconv.ParseFloat(inputList[3], 64)
+			if err != nil {
+				stock.Position = data
+			}
+		}
+		if len(inputList) > 4 {
+			stock.EnableRealTimePic = inputList[4] == "1"
+		}
 	}
 
 	isAlphaNum := regexp.MustCompile(`^[A-Za-z0-9]+$`).MatchString
@@ -44,9 +63,9 @@ func InputNewStock() (*entity.StockCurrentInfo, bool) {
 
 	if len(stockList) == 0 {
 		_ = zenity.Error("股票不存在：" + codeOrName)
-		return nil, showInTitle
+		return nil
 	}
-	var stock entity.StockCurrentInfo
+	var stockCurrentInfo entity.StockCurrentInfo
 	if len(stockList) > 1 {
 		stockNameList := lo.Map(stockList, func(item entity.StockCurrentInfo, index int) string {
 			return item.Name
@@ -54,27 +73,31 @@ func InputNewStock() (*entity.StockCurrentInfo, bool) {
 		selectStockName, err := zenity.ListItems("该Code对应多个股票，请选择", stockNameList...)
 		if err != nil {
 			log.Println(err)
-			return nil, showInTitle
+			return nil
 		}
 		fl := lo.Filter(stockList, func(item entity.StockCurrentInfo, index int) bool {
 			return item.Name == selectStockName
 		})
 		if len(fl) == 0 {
 			_ = zenity.Error("添加异常")
-			return nil, showInTitle
+			return nil
 		}
-		stock = fl[0]
+		stockCurrentInfo = fl[0]
 	} else {
-		stock = stockList[0]
+		stockCurrentInfo = stockList[0]
 	}
 
 	err = zenity.Question("确认添加[ " + stock.Name + " ]?")
 	if err != nil {
 		println("err", err)
-		return nil, showInTitle
+		return nil
 	}
 
-	return &stock, showInTitle
+	stock.Name = stockCurrentInfo.Name
+	stock.Code = stockCurrentInfo.Code
+	stock.Type = &stockCurrentInfo.Type
+
+	return &stock
 }
 
 func Confirm(message string) bool {

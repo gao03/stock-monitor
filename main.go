@@ -125,20 +125,20 @@ func updateAndRestart() {
 }
 
 func addStockToConfig() {
-	stockCurrentInfo, showInTitle := dialog.InputNewStock()
-	if stockCurrentInfo == nil {
+	stock := dialog.InputNewStock()
+	if stock == nil {
 		return
 	}
 
-	stock := entity.StockConfig{
-		Code:              stockCurrentInfo.Code,
-		Type:              &stockCurrentInfo.Type,
-		Name:              stockCurrentInfo.Name,
-		ShowInTitle:       BoolPointer(showInTitle),
-		EnableRealTimePic: false,
-	}
+	//stock := entity.StockConfig{
+	//	Code:              stockCurrentInfo.Code,
+	//	Type:              &stockCurrentInfo.Type,
+	//	Name:              stockCurrentInfo.Name,
+	//	ShowInTitle:       main2.BoolPointer(showInTitle),
+	//	EnableRealTimePic: false,
+	//}
 	stockList := config.ReadConfigFromFile()
-	newStockList := append(*stockList, stock)
+	newStockList := append(*stockList, *stock)
 	config.WriteConfig(&newStockList)
 	checkAndCompleteConfig()
 	restartSelf()
@@ -323,7 +323,7 @@ func updateStockShowInTitle(stock entity.StockConfig) func() {
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
 			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
-					item.ShowInTitle = BoolPointer(newVal)
+					item.ShowInTitle = main2.BoolPointer(newVal)
 				}
 				return item
 			})
@@ -445,7 +445,7 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 	priceList := lo.FilterMap(stockList, func(stock *entity.Stock, _ int) (string, bool) {
 		sit := stock.Config.ShowInTitle
 		if sit == nil {
-			sit = BoolPointer(false)
+			sit = utils.BoolPointer(false)
 		}
 		return utils.FormatPrice(stock.CurrentInfo.Price), *sit
 	})
@@ -503,7 +503,7 @@ func checkAndCompleteConfig() {
 			continue
 		}
 		if stock.ShowInTitle == nil {
-			stock.ShowInTitle = BoolPointer(false)
+			stock.ShowInTitle = utils.BoolPointer(false)
 		}
 		stock.Name = info.Name
 		stock.Type = &info.Type
@@ -513,8 +513,4 @@ func checkAndCompleteConfig() {
 	config.WriteConfig(&validStock)
 
 	restartSelf()
-}
-
-func BoolPointer(b bool) *bool {
-	return &b
 }
