@@ -130,13 +130,6 @@ func addStockToConfig() {
 		return
 	}
 
-	//stock := entity.StockConfig{
-	//	Code:              stockCurrentInfo.Code,
-	//	Type:              &stockCurrentInfo.Type,
-	//	Name:              stockCurrentInfo.Name,
-	//	ShowInTitle:       main2.BoolPointer(showInTitle),
-	//	EnableRealTimePic: false,
-	//}
 	stockList := config.ReadConfigFromFile()
 	newStockList := append(*stockList, *stock)
 	config.WriteConfig(&newStockList)
@@ -323,7 +316,7 @@ func updateStockShowInTitle(stock entity.StockConfig) func() {
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
 			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
-					item.ShowInTitle = main2.BoolPointer(newVal)
+					item.ShowInTitle = utils.BoolPointer(newVal)
 				}
 				return item
 			})
