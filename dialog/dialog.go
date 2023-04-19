@@ -1,8 +1,6 @@
 package dialog
 
 import (
-	"github.com/ncruces/zenity"
-	"github.com/samber/lo"
 	"log"
 	"monitor/api"
 	"monitor/entity"
@@ -10,6 +8,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/ncruces/zenity"
+	"github.com/samber/lo"
 )
 
 func InputNewStock() *entity.StockConfig {
@@ -87,15 +88,15 @@ func InputNewStock() *entity.StockConfig {
 		stockCurrentInfo = stockList[0]
 	}
 
+	stock.Name = stockCurrentInfo.Name
+	stock.Code = stockCurrentInfo.Code
+	stock.Type = &stockCurrentInfo.Type
+
 	err = zenity.Question("确认添加[ " + stock.Name + " ]?")
 	if err != nil {
 		println("err", err)
 		return nil
 	}
-
-	stock.Name = stockCurrentInfo.Name
-	stock.Code = stockCurrentInfo.Code
-	stock.Type = &stockCurrentInfo.Type
 
 	return &stock
 }

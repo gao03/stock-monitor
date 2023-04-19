@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/guonaihong/gout"
 	"github.com/samber/lo"
-	"golang.org/x/exp/maps"
 	"log"
 	"strconv"
 	"time"
@@ -57,7 +56,7 @@ func (b *BaiduApi) OcrTable(image []byte) (error, OcrTableResult) {
 		})
 		if len(result.Header) == 0 {
 			header = one
-			result.Header = maps.Values(one)
+			result.Header = lo.Values(one)
 			continue
 		}
 		data := lo.SliceToMap(row, func(item ocrTableBody) (string, string) {
