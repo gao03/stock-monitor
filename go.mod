@@ -47,6 +47,7 @@ require (
 	github.com/ysmood/leakless v0.8.0 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/exp/shiny v0.0.0-20230111222715-75897c7a292a // indirect
 	golang.org/x/image v0.7.0 // indirect
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
@@ -56,4 +57,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
 
-replace github.com/getlantern/systray v1.2.0 => github.com/gao03/systray dev
+replace github.com/getlantern/systray v1.2.0 => github.com/gao03/systray v1.1.1-0.20230104030122-a728dd4c3ad8
