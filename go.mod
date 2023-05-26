@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/getlantern/systray v1.2.0
 	github.com/go-playground/assert/v2 v2.2.0
-	github.com/go-rod/rod v0.112.9
+	github.com/go-rod/rod v0.113.0
 	github.com/guonaihong/gout v0.3.7
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/ncruces/zenity v0.10.8
@@ -42,8 +42,9 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	github.com/ysmood/fetchup v0.2.2 // indirect
+	github.com/ysmood/fetchup v0.2.3 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
+	github.com/ysmood/got v0.34.1 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
