@@ -75,10 +75,14 @@ func CalcReturn(cost float64, current float64) string {
 }
 
 func FormatPrice(num float64) string {
-	if num < 1 {
-		return fmt.Sprintf("%6.03f", num)
+	s := strings.Split(fmt.Sprintf("%6.03f", num), ".")
+	prefix := s[0]
+	suffix := s[1]
+	// 如果价格最后一位是0，那就保留2位小数，否则保留3位
+	if suffix[2] == '0' {
+		suffix = suffix[:2]
 	}
-	return fmt.Sprintf("%6.02f", num)
+	return prefix + "." + suffix
 }
 
 func CheckIsMarketClose() bool {
