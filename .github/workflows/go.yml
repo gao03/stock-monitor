@@ -23,7 +23,7 @@ jobs:
       run: go build -v .
 
     - name: Generate Tag
-      run: echo "release_tag=auto:release:$(date +"%Y.%m.%d_%H-%M")" >> $GITHUB_ENV
+      run: echo "release_tag=auto-release-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
 
     - name: Release
       uses: softprops/action-gh-release@v0.1.15
