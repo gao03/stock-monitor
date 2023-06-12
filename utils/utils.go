@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"monitor/entity"
 	"os"
 	"os/exec"
 	"os/user"
@@ -310,4 +311,24 @@ func CheckNowAfter(hour, minute int) bool {
 
 func BoolPointer(b bool) *bool {
 	return &b
+}
+
+func CheckStockCanShowInTitle(cfg entity.StockConfig) bool {
+	sit := cfg.ShowInTitle
+	if sit == nil {
+		sit = BoolPointer(false)
+	}
+	now := time.Now()
+	nm := now.Hour()*60 + now.Minute()
+
+	if *cfg.Type == 0 || *cfg.Type == 1 {
+		// A股 只在 09:15 ~ 15:10 之间显示
+		return nm >= 9*60+15 && nm <= 15*60+10 && *sit
+	} else if *cfg.Type == 116 {
+		// 港股 只在 09:00 ~ 16:10 之间显示
+		return nm >= 9*60 && nm <= 16*60+10 && *sit
+	} else {
+		// 美股在 00:00 ~ 09:00 && 16:00~24:00 之间显示
+		return (nm <= 9*60 || nm > 16*60) && *sit
+	}
 }

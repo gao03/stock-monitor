@@ -436,11 +436,7 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 		return stock.Config.CostPrice * stock.Config.Position
 	})
 	priceList := lo.FilterMap(stockList, func(stock *entity.Stock, _ int) (string, bool) {
-		sit := stock.Config.ShowInTitle
-		if sit == nil {
-			sit = utils.BoolPointer(false)
-		}
-		return utils.FormatPrice(stock.CurrentInfo.Price), *sit
+		return utils.FormatPrice(stock.CurrentInfo.Price), utils.CheckStockCanShowInTitle(stock.Config)
 	})
 
 	titleList := []string{
