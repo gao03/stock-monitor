@@ -329,6 +329,6 @@ func CheckStockCanShowInTitle(cfg entity.StockConfig) bool {
 		return nm >= 9*60 && nm <= 16*60+10 && *sit
 	} else {
 		// 美股在 00:00 ~ 09:00 && 16:00~24:00 之间显示
-		return (nm <= 9*60 || nm > 16*60) && *sit
+		return (nm <= 9*60 || nm >= 16*60) && *sit
 	}
 }
