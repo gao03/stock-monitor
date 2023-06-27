@@ -445,8 +445,17 @@ func generateTitle(flag *bool, stockList []*entity.Stock) string {
 		strings.Join(priceList, " | "),
 	}
 
-	// 给标题最后补上空格：保证标题的长度不会变化，导致闪来闪去的
-	result := fmt.Sprintf("%-"+strconv.Itoa(titleLength-2)+"s", strings.Join(titleList, ""))
+	result := strings.Join(titleList, "")
+
+	lengthDiff := len(result) - titleLength
+	if lengthDiff < 0 {
+		lengthDiff = -1 * lengthDiff
+	}
+	// 如果茶都差异过大，就不补空格
+	if lengthDiff < 4 {
+		// 给标题最后补上空格：保证标题的长度不会变化，导致闪来闪去的
+		result = fmt.Sprintf("%-"+strconv.Itoa(titleLength-2)+"s", strings.Join(titleList, ""))
+	}
 	titleLength = len(result)
 
 	return result
