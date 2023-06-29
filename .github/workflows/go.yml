@@ -32,3 +32,10 @@ jobs:
       with:
         tag_name: ${{ env.release_tag }}
         files: monitor
+
+    - name: Delete Older Releases
+      uses: dev-drprasad/delete-older-releases@v0.2.1
+      with:
+        keep_latest: 2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
