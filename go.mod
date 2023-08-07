@@ -8,7 +8,7 @@ require (
 	github.com/go-rod/rod v0.113.3
 	github.com/guonaihong/gout v0.3.7
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
-	github.com/ncruces/zenity v0.10.9
+	github.com/ncruces/zenity v0.10.10
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/samber/lo v1.38.1
 	golang.design/x/clipboard v0.6.3
@@ -51,10 +51,10 @@ require (
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/exp/shiny v0.0.0-20230111222715-75897c7a292a // indirect
-	golang.org/x/image v0.7.0 // indirect
+	golang.org/x/image v0.10.0 // indirect
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
 	golang.org/x/net v0.6.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
