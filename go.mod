@@ -6,7 +6,7 @@ require (
 	github.com/getlantern/systray v1.2.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-rod/rod v0.114.2
-	github.com/guonaihong/gout v0.3.7
+	github.com/guonaihong/gout v0.3.8
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/ncruces/zenity v0.10.10
 	github.com/patrickmn/go-cache v2.1.0+incompatible
