@@ -5,6 +5,7 @@ import (
 	"monitor/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/guonaihong/gout"
 )
@@ -26,10 +27,16 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 	if err != nil {
 		return result
 	}
+	usStart := 22
+	usEnd := 5
+	if isDST() {
+		usStart = 21
+		usEnd = 4
+	}
 	for _, info := range response.Data.StockInfoList {
 		info.Name = strings.ReplaceAll(info.Name, " ", "")
 		if info.Type == 105 || info.Type == 106 || info.Type == 107 {
-			if utils.CheckNowBefore(22, 30) && utils.CheckNowAfter(5, 0) {
+			if utils.CheckNowBefore(usStart, 30) && utils.CheckNowAfter(usEnd, 0) {
 				outInfo := QueryStockOutInfo(info)
 				if outInfo != nil {
 					// log.Printf("stock out info [%s]: %v", info.Code, outInfo)
@@ -41,6 +48,13 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 		result[info.Code] = info
 	}
 	return result
+}
+
+func isDST() bool {
+	loc, _ := time.LoadLocation("America/New_York")
+	t := time.Now().In(loc)
+	_, offset := t.Zone()
+	return offset/60/60 == -4 // 夏令时时，美国东部时间为UTC-4
 }
 
 func QueryOneStockInfoByCode(code string) []entity.StockCurrentInfo {
