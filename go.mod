@@ -10,7 +10,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/ncruces/zenity v0.10.10
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/samber/lo v1.38.1
+	github.com/samber/lo v1.39.0
 	golang.design/x/clipboard v0.6.3
 )
 
