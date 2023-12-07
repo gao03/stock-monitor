@@ -5,7 +5,6 @@ import (
 	"monitor/utils"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/guonaihong/gout"
 )
@@ -29,7 +28,7 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 	}
 	usStart := 22
 	usEnd := 5
-	if isDST() {
+	if utils.IsUsDST() {
 		usStart = 21
 		usEnd = 4
 	}
@@ -48,13 +47,6 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 		result[info.Code] = info
 	}
 	return result
-}
-
-func isDST() bool {
-	loc, _ := time.LoadLocation("America/New_York")
-	t := time.Now().In(loc)
-	_, offset := t.Zone()
-	return offset/60/60 == -4 // 夏令时时，美国东部时间为UTC-4
 }
 
 func QueryOneStockInfoByCode(code string) []entity.StockCurrentInfo {

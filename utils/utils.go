@@ -313,6 +313,13 @@ func BoolPointer(b bool) *bool {
 	return &b
 }
 
+func IsUsDST() bool {
+	loc, _ := time.LoadLocation("America/New_York")
+	t := time.Now().In(loc)
+	_, offset := t.Zone()
+	return offset/60/60 == -4 // 夏令时时，美国东部时间为UTC-4
+}
+
 func CheckStockCanShowInTitle(cfg entity.StockConfig) bool {
 	sit := cfg.ShowInTitle
 	if sit == nil {
@@ -328,7 +335,11 @@ func CheckStockCanShowInTitle(cfg entity.StockConfig) bool {
 		// 港股 只在 09:00 ~ 16:10 之间显示
 		return nm >= 9*60 && nm <= 16*60+10 && *sit
 	} else {
+		usStart := 17
+		if IsUsDST() {
+			usStart = 16
+		}
 		// 美股在 00:00 ~ 09:00 && 16:00~24:00 之间显示
-		return (nm <= 9*60 || nm >= 16*60) && *sit
+		return (nm <= 9*60 || nm >= usStart*60) && *sit
 	}
 }
