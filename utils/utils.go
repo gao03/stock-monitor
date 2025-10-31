@@ -1,7 +1,6 @@
 package utils
 
 import (
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/samber/lo"
 )
 
 func ToJson(v interface{}) string {
@@ -270,27 +267,39 @@ type StockBaseInfo struct {
 	Name string `json:"name"`
 }
 
-//go:embed assets/all_stock.json
-var allStockStr string
-
+// SearchStockByName 根据名称搜索股票
 func SearchStockByName(name string) []StockBaseInfo {
-	var result []StockBaseInfo
+	// 读取股票数据文件
+	stockDataPath := "utils/assets/all_stock.json"
+	if !FileIsExists(stockDataPath) {
+		return []StockBaseInfo{}
+	}
 
-	err := json.Unmarshal([]byte(allStockStr), &result)
-
+	data, err := os.ReadFile(stockDataPath)
 	if err != nil {
 		return []StockBaseInfo{}
 	}
 
-	lst := lo.Filter(result, func(item StockBaseInfo, index int) bool {
-		return item.Name == name
-	})
-	if len(lst) > 0 {
-		return lst
+	var stocks []StockBaseInfo
+	if err := json.Unmarshal(data, &stocks); err != nil {
+		return []StockBaseInfo{}
 	}
-	return lo.Filter(result, func(item StockBaseInfo, index int) bool {
-		return strings.Contains(item.Name, name)
-	})
+
+	// 搜索匹配的股票
+	var result []StockBaseInfo
+	name = strings.ToLower(name)
+	for _, stock := range stocks {
+		if strings.Contains(strings.ToLower(stock.Name), name) ||
+		   strings.Contains(strings.ToLower(stock.Code), name) {
+			result = append(result, stock)
+			// 限制返回结果数量
+			if len(result) >= 20 {
+				break
+			}
+		}
+	}
+
+	return result
 }
 
 func CheckNowBetween(startHour, startMinute, endHour, endMinute int) bool {

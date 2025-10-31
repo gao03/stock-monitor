@@ -22,7 +22,7 @@ jobs:
       uses: actions/setup-go@v3
 
     - name: Build
-      run: go build -v .
+      run: CC=clang go build -v -o stock-monitor ./main.go
 
     - name: Generate Tag
       run: echo "release_tag=auto-release-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
@@ -31,7 +31,7 @@ jobs:
       uses: softprops/action-gh-release@v0.1.15
       with:
         tag_name: ${{ env.release_tag }}
-        files: monitor
+        files: stock-monitor
 
     - name: Delete Older Releases
       uses: dev-drprasad/delete-older-releases@v0.2.1

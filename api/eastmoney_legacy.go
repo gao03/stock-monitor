@@ -1,10 +1,12 @@
 package api
 
 import (
+	"log"
 	"monitor/entity"
 	"monitor/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/guonaihong/gout"
 )
@@ -19,12 +21,34 @@ type ApiData struct {
 
 func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurrentInfo {
 	var codeStr = strings.Join(utils.MapToStr(codeList, stockCodeToApiCode), ",")
-	url := "https://push2.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18,f232&fltt=2&secids=" + codeStr
+	url := "https://push2delay.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18,f232&fltt=2&secids=" + codeStr
 	var response ApiResponse
 	var result = make(map[string]entity.StockCurrentInfo)
-	err := gout.GET(url).Debug(false).BindJSON(&response).Do()
-	if err != nil {
-		return result
+
+	// 实现重试机制，最多重试3次
+	maxRetries := 3
+	var err error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err = gout.GET(url).
+			SetTimeout(10*time.Second). // 设置10秒超时
+			Debug(false).
+			BindJSON(&response).
+			Do()
+
+		if err == nil && response.Data.StockInfoList != nil && len(response.Data.StockInfoList) > 0 {
+			// 成功获取到数据，跳出重试循环
+			break
+		}
+
+		if attempt < maxRetries {
+			// 等待一段时间后重试，使用指数退避策略
+			waitTime := time.Duration(attempt) * time.Second
+			log.Printf("东财API调用失败 (尝试 %d/%d)，%v 后重试: %v", attempt, maxRetries, waitTime, err)
+			time.Sleep(waitTime)
+		} else {
+			log.Printf("东财API调用失败，已达到最大重试次数 (%d)，返回空结果: %v", maxRetries, err)
+			return result
+		}
 	}
 	usStart := 22
 	usEnd := 5
@@ -51,7 +75,7 @@ func QueryStockInfo(codeList *[]entity.StockConfig) map[string]entity.StockCurre
 
 func QueryOneStockInfoByCode(code string) []entity.StockCurrentInfo {
 	var codeStr = stockCodeToApiCode(entity.StockConfig{Code: code})
-	url := "https://push2.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18,f232&fltt=2&secids=" + codeStr
+	url := "https://push2delay.eastmoney.com/api/qt/ulist.np/get?fields=f2,f3,f12,f13,f14,f15,f16,f18,f232&fltt=2&secids=" + codeStr
 	var response ApiResponse
 
 	err := gout.GET(url).Debug(false).BindJSON(&response).Do()
