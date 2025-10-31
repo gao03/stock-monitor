@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/getlantern/systray v1.2.0
-	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-rod/rod v0.114.2
 	github.com/guonaihong/gout v0.3.8
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
@@ -26,6 +25,7 @@ require (
 	github.com/getlantern/hex v0.0.0-20190417191902-c6586a6fe0b7 // indirect
 	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
+	github.com/go-playground/assert/v2 v2.2.0 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
@@ -50,9 +50,7 @@ require (
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
-	golang.org/x/exp/shiny v0.0.0-20230111222715-75897c7a292a // indirect
 	golang.org/x/image v0.10.0 // indirect
-	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
 	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
