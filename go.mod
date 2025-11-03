@@ -9,8 +9,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/ncruces/zenity v0.10.10
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/samber/lo v1.39.0
-	golang.design/x/clipboard v0.6.3
+	github.com/samber/lo v1.52.0
 )
 
 require (
@@ -49,10 +48,11 @@ require (
 	github.com/ysmood/leakless v0.8.0 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/image v0.10.0 // indirect
 	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
