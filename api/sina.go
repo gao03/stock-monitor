@@ -1,12 +1,13 @@
 package api
 
 import (
-	"github.com/guonaihong/gout"
 	"log"
 	"monitor/entity"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/guonaihong/gout"
 )
 
 func QueryStockOutInfo(stock entity.StockCurrentInfo) *entity.StockOutPrice {
@@ -14,7 +15,6 @@ func QueryStockOutInfo(stock entity.StockCurrentInfo) *entity.StockOutPrice {
 	err := gout.GET("https://hq.sinajs.cn/rn").
 		SetQuery(gout.H{"list": "gb_" + strings.ToLower(stock.Code)}).
 		SetHeader(gout.H{"Referer": "https://sina.com.cn"}).
-		Debug(true).
 		BindBody(&response).
 		Do()
 	if err != nil {

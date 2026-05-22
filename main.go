@@ -7,6 +7,7 @@ import (
 	"monitor/api"
 	"monitor/config"
 	"monitor/constant/StockType"
+	"monitor/database"
 	"monitor/dialog"
 	"monitor/entity"
 	"monitor/utils"
@@ -33,6 +34,10 @@ var MonitorPushCache = cache.New(5*time.Minute, 10*time.Minute)
 var ReturnCostPushCache = cache.New(10*time.Hour, 10*time.Hour)
 
 func main() {
+	// 初始化数据库
+	database.InitDB()
+	defer database.CloseDB()
+
 	if len(os.Args) == 1 {
 		// 如果传了参数，就不用后台运行的模式
 		background("/tmp/stock-monitor-daemon.log")
@@ -96,6 +101,9 @@ func background(logFile string) {
 func onReady() {
 	systray.SetTitle("monitor")
 
+	// 记录系统启动
+	database.LogOperation(database.OperationSystem, "", "", "系统启动")
+
 	checkTodayRefreshConfig()
 
 	flag := false
@@ -113,6 +121,7 @@ func onReady() {
 	if config.HasEastMoneyAccount() {
 		addRightMenuItem("刷新", updateAndRestart)
 	}
+	addRightMenuItem("查看操作记录", showOperationRecords)
 	addRightMenuItem("添加", addStockToConfig)
 	addRightMenuItem("退出", systray.Quit)
 }
@@ -133,6 +142,10 @@ func addStockToConfig() {
 	stockList := config.ReadConfigFromFile()
 	newStockList := append(*stockList, *stock)
 	config.WriteConfig(&newStockList)
+
+	// 记录操作
+	database.LogOperation(database.OperationAddStock, stock.Code, stock.Name, "添加股票")
+
 	checkAndCompleteConfig()
 	restartSelf()
 }
@@ -145,6 +158,8 @@ func removeStockFromConfig(stock entity.StockConfig) func() {
 		}
 
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			// 记录操作
+			database.LogOperation(database.OperationRemoveStock, stock.Code, stock.Name, "删除股票")
 			return lo.Filter(*stockList, func(item entity.StockConfig, index int) bool {
 				return item.Code != stock.Code
 			})
@@ -222,35 +237,31 @@ func updateStockInfo(flag *bool, codeToMenuItemMap map[string]*systray.MenuItem)
 		return
 	}
 
-	codeList := make([]string, len(*stockConfigList))
-	for i, v := range *stockConfigList {
-		codeList[i] = v.Code
-	}
-
 	infoMap := api.QueryStockInfo(stockConfigList)
 
-	var stockList []*entity.Stock
+	stockList := make([]*entity.Stock, 0, len(*stockConfigList))
 	for _, item := range *stockConfigList {
 		current, ok := infoMap[item.Code]
 		if !ok {
 			continue
 		}
+
 		menu, ok := codeToMenuItemMap[item.Code]
 		if !ok {
 			menu = addMenuItem(item.Code, OpenXueQiuUrl(item))
 			codeToMenuItemMap[item.Code] = menu
-
 			addSubMenuToStock(menu, item)
 		}
-		stock := entity.Stock{
+
+		stock := &entity.Stock{
 			Code:        item.Code,
 			Config:      item,
 			CurrentInfo: current,
 			MenuItem:    menu,
 		}
-		stockList = append(stockList, &stock)
-		updateSubMenuTitle(&stock)
-		checkStockMonitorPrice(&stock)
+		stockList = append(stockList, stock)
+		updateSubMenuTitle(stock)
+		checkStockMonitorPrice(stock)
 	}
 	systray.SetTitle(generateTitle(flag, stockList))
 }
@@ -292,6 +303,8 @@ func updateStockEnableRealTimePic(stock entity.StockConfig) func() {
 			return
 		}
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			// 记录操作
+			database.LogOperation(database.OperationUpdateConfig, stock.Code, stock.Name, op+"时分图")
 			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.EnableRealTimePic = newVal
@@ -314,6 +327,8 @@ func updateStockShowInTitle(stock entity.StockConfig) func() {
 			return
 		}
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			// 记录操作
+			database.LogOperation(database.OperationUpdateConfig, stock.Code, stock.Name, opMessage+"股票")
 			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.ShowInTitle = utils.BoolPointer(newVal)
@@ -331,6 +346,8 @@ func addStockMonitorRule(stock entity.StockConfig) func() {
 			return
 		}
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			// 记录操作
+			database.LogOperation(database.OperationAddMonitor, stock.Code, stock.Name, "添加监控规则: "+rule)
 			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.MonitorRules = append(item.MonitorRules, rule)
@@ -348,6 +365,8 @@ func removeStockMonitorRule(stock entity.StockConfig, rule string) func() {
 			return
 		}
 		ChangeConfigAndRestart(func(stockList *[]entity.StockConfig) []entity.StockConfig {
+			// 记录操作
+			database.LogOperation(database.OperationRemoveMonitor, stock.Code, stock.Name, "删除监控规则: "+rule)
 			return lo.Map(*stockList, func(item entity.StockConfig, index int) entity.StockConfig {
 				if item.Code == stock.Code {
 					item.MonitorRules = lo.Filter(item.MonitorRules, func(iu string, idx int) bool {
@@ -511,4 +530,32 @@ func checkAndCompleteConfig() {
 	config.WriteConfig(&validStock)
 
 	restartSelf()
+}
+
+// showOperationRecords 显示操作记录
+func showOperationRecords() {
+	operations, err := database.GetRecentOperations(50)
+	if err != nil {
+		dialog.Confirm("获取操作记录失败: " + err.Error())
+		return
+	}
+
+	if len(operations) == 0 {
+		dialog.Confirm("暂无操作记录")
+		return
+	}
+
+	var records string
+	for _, op := range operations {
+		opType := op["type"].(string)
+		stockCode := op["stock_code"].(string)
+		stockName := op["stock_name"].(string)
+		description := op["description"].(string)
+		timestamp := op["timestamp"].(string)
+
+		record := fmt.Sprintf("%s | %s | %s | %s | %s\n", timestamp, opType, stockCode, stockName, description)
+		records += record
+	}
+
+	dialog.Confirm("操作记录\n\n" + records)
 }

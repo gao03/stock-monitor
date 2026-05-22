@@ -8,6 +8,7 @@ require (
 	github.com/go-rod/rod v0.114.2
 	github.com/guonaihong/gout v0.3.8
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/ncruces/zenity v0.10.10
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/samber/lo v1.38.1
