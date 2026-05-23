@@ -16,11 +16,17 @@ The WebView/screenshot chart feature is intentionally not included.
 
 ## Build
 
+Open `StockMonitorNative.xcodeproj` in Xcode and select the `StockMonitorNativeApp` scheme.
+
 ```bash
 swift build
 swift run StockMonitorNative
+swift test
+xcodebuild -project StockMonitorNative.xcodeproj -scheme StockMonitorNativeApp -destination platform=macOS test
 ```
 
 This project targets macOS 14+. A matching Xcode/Command Line Tools installation is required.
+
+`swift test` runs the XCTest suite first. The final `Swift Testing` line may report `0 tests in 0 suites`; that only means there are no tests using the newer Swift Testing framework.
 
 When launched with `swift run`, the app runs as an unbundled executable. System notifications are disabled in that mode because `UNUserNotificationCenter` requires an app bundle identity. Notifications are enabled when the app is packaged as a `.app`.

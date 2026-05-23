@@ -8,12 +8,18 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "StockMonitorNative", targets: ["StockMonitorNative"])
+        .library(name: "StockMonitorNativeLibrary", targets: ["StockMonitorNative"]),
+        .executable(name: "StockMonitorNative", targets: ["StockMonitorNativeApp"])
     ],
     targets: [
-        .executableTarget(
+        .target(
             name: "StockMonitorNative",
             path: "Sources/StockMonitorNative"
+        ),
+        .executableTarget(
+            name: "StockMonitorNativeApp",
+            dependencies: ["StockMonitorNative"],
+            path: "Sources/StockMonitorNativeApp"
         ),
         .testTarget(
             name: "StockMonitorNativeTests",

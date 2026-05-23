@@ -1,12 +1,16 @@
 import AppKit
 import SwiftUI
 
-final class StockMonitorAppDelegate: NSObject, NSApplicationDelegate {
+public final class StockMonitorAppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState!
     private var statusController: StatusBarController!
     private var settingsWindowController: NSWindowController?
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    public override init() {
+        super.init()
+    }
+
+    public func applicationDidFinishLaunching(_ notification: Notification) {
         let operationStore = OperationStore()
         let stockStore = StockStore(operationStore: operationStore)
         let settingsStore = SettingsStore()
@@ -34,7 +38,7 @@ final class StockMonitorAppDelegate: NSObject, NSApplicationDelegate {
         notificationService.requestAuthorization()
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    public func applicationWillTerminate(_ notification: Notification) {
         statusController?.stop()
     }
 
@@ -66,4 +70,3 @@ final class StockMonitorAppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 }
-
