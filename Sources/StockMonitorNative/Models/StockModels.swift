@@ -100,6 +100,24 @@ public struct StockSymbol: Codable, Sendable, Hashable, Identifiable {
         self.market = market
     }
 
+    enum CodingKeys: String, CodingKey {
+        case code
+        case market
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let code = try container.decode(String.self, forKey: .code)
+        let market = try container.decodeIfPresent(StockMarket.self, forKey: .market)
+        self.init(code: code, market: market)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(code, forKey: .code)
+        try container.encodeIfPresent(market, forKey: .market)
+    }
+
     public var eastMoneySecID: String? {
         guard let market else { return nil }
         return "\(market.eastMoneyID).\(code)"
@@ -118,11 +136,8 @@ public struct StockConfig: Codable, Sendable, Identifiable, Hashable {
     public var name: String
     public var costPrice: Decimal
     public var position: Decimal
-    public var showInTitle: Bool?
-    public var enableRealTimePic: Bool
+    public var showInTitle: Bool
     public var monitorRules: [MonitorRule]
-    public var alertsEnabled: Bool
-    public var providerID: String?
 
     public var id: String { symbol.id }
 
@@ -131,54 +146,19 @@ public struct StockConfig: Codable, Sendable, Identifiable, Hashable {
         name: String = "",
         costPrice: Decimal = 0,
         position: Decimal = 0,
-        showInTitle: Bool? = nil,
-        enableRealTimePic: Bool = false,
-        monitorRules: [MonitorRule] = [],
-        alertsEnabled: Bool = true,
-        providerID: String? = nil
+        showInTitle: Bool = false,
+        monitorRules: [MonitorRule] = []
     ) {
         self.symbol = symbol
         self.name = name
         self.costPrice = costPrice
         self.position = position
         self.showInTitle = showInTitle
-        self.enableRealTimePic = enableRealTimePic
         self.monitorRules = monitorRules
-        self.alertsEnabled = alertsEnabled
-        self.providerID = providerID
-    }
-
-    public init(
-        symbol: StockSymbol,
-        name: String = "",
-        costPrice: Double,
-        position: Double,
-        showInTitle: Bool? = nil,
-        enableRealTimePic: Bool = false,
-        monitorRules: [MonitorRule] = [],
-        alertsEnabled: Bool = true,
-        providerID: String? = nil
-    ) {
-        self.init(
-            symbol: symbol,
-            name: name,
-            costPrice: Decimal.fromDouble(costPrice),
-            position: Decimal.fromDouble(position),
-            showInTitle: showInTitle,
-            enableRealTimePic: enableRealTimePic,
-            monitorRules: monitorRules,
-            alertsEnabled: alertsEnabled,
-            providerID: providerID
-        )
     }
 
     public var displayName: String {
         name.isEmpty ? symbol.code : name
-    }
-
-    public var showInMenuBar: Bool {
-        get { showInTitle ?? false }
-        set { showInTitle = newValue }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -187,10 +167,7 @@ public struct StockConfig: Codable, Sendable, Identifiable, Hashable {
         case costPrice
         case position
         case showInTitle
-        case enableRealTimePic
         case monitorRules
-        case alertsEnabled
-        case providerID
     }
 
     public init(from decoder: Decoder) throws {
@@ -199,11 +176,8 @@ public struct StockConfig: Codable, Sendable, Identifiable, Hashable {
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         costPrice = try container.decodeFlexibleDecimalIfPresent(forKey: .costPrice) ?? 0
         position = try container.decodeFlexibleDecimalIfPresent(forKey: .position) ?? 0
-        showInTitle = try container.decodeIfPresent(Bool.self, forKey: .showInTitle)
-        enableRealTimePic = try container.decodeIfPresent(Bool.self, forKey: .enableRealTimePic) ?? false
+        showInTitle = try container.decodeIfPresent(Bool.self, forKey: .showInTitle) ?? false
         monitorRules = try container.decodeIfPresent([MonitorRule].self, forKey: .monitorRules) ?? []
-        alertsEnabled = try container.decodeIfPresent(Bool.self, forKey: .alertsEnabled) ?? true
-        providerID = try container.decodeIfPresent(String.self, forKey: .providerID)
     }
 }
 
@@ -260,42 +234,6 @@ public struct StockQuote: Codable, Sendable, Identifiable, Hashable {
         self.underlyingStockCode = underlyingStockCode
         self.timestamp = timestamp
         self.session = session
-    }
-
-    public init(
-        symbol: StockSymbol,
-        name: String,
-        price: Double,
-        percentChange: Double,
-        highestPrice: Double,
-        lowestPrice: Double = 0,
-        openPrice: Double,
-        averagePrice: Double = 0,
-        previousClose: Double,
-        ma5: Double = 0,
-        ma10: Double = 0,
-        ma20: Double = 0,
-        underlyingStockCode: String? = nil,
-        timestamp: Date = Date(),
-        session: QuoteSession = .regular
-    ) {
-        self.init(
-            symbol: symbol,
-            name: name,
-            price: Decimal.fromDouble(price),
-            percentChange: Decimal.fromDouble(percentChange),
-            highestPrice: Decimal.fromDouble(highestPrice),
-            lowestPrice: Decimal.fromDouble(lowestPrice),
-            openPrice: Decimal.fromDouble(openPrice),
-            averagePrice: Decimal.fromDouble(averagePrice),
-            previousClose: Decimal.fromDouble(previousClose),
-            ma5: Decimal.fromDouble(ma5),
-            ma10: Decimal.fromDouble(ma10),
-            ma20: Decimal.fromDouble(ma20),
-            underlyingStockCode: underlyingStockCode,
-            timestamp: timestamp,
-            session: session
-        )
     }
 
     enum CodingKeys: String, CodingKey {
@@ -356,15 +294,6 @@ public struct AfterHoursQuote: Codable, Sendable, Hashable {
         self.timestamp = timestamp
     }
 
-    public init(symbol: StockSymbol, price: Double, percentChange: Double, timestamp: Date = Date()) {
-        self.init(
-            symbol: symbol,
-            price: Decimal.fromDouble(price),
-            percentChange: Decimal.fromDouble(percentChange),
-            timestamp: timestamp
-        )
-    }
-
     enum CodingKeys: String, CodingKey {
         case symbol
         case price
@@ -378,12 +307,6 @@ public struct AfterHoursQuote: Codable, Sendable, Hashable {
         price = try container.decodeFlexibleDecimal(forKey: .price)
         percentChange = try container.decodeFlexibleDecimal(forKey: .percentChange)
         timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp) ?? Date()
-    }
-}
-
-public extension Decimal {
-    static func fromDouble(_ value: Double) -> Decimal {
-        Decimal(string: String(value), locale: Locale(identifier: "en_US_POSIX")) ?? Decimal(value)
     }
 }
 

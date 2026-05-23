@@ -4,17 +4,16 @@ import SwiftUI
 @MainActor
 final class StatusBarController {
     private let appState: AppState
-    private let openSettings: () -> Void
     private let statusItem: NSStatusItem
     private let panelSize = NSSize(width: 360, height: 360)
     private var panel: StatusPanel?
     private var popoverPresentationID = UUID()
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
+    private var titleUpdateTasks: [Task<Void, Never>] = []
 
-    init(appState: AppState, openSettings: @escaping () -> Void) {
+    init(appState: AppState) {
         self.appState = appState
-        self.openSettings = openSettings
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     }
 
@@ -23,24 +22,44 @@ final class StatusBarController {
         configurePanel()
         updateTitle()
         appState.startRefreshing()
-
-        Task { [weak self] in
-            guard let self else { return }
-            for await _ in self.appState.$quotes.values {
-                self.updateTitle()
-            }
-        }
+        startTitleUpdates()
     }
 
     func stop() {
+        stopTitleUpdates()
         closePanel()
         removeEventMonitors()
         appState.stopRefreshing()
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 
+    private func startTitleUpdates() {
+        stopTitleUpdates()
+        titleUpdateTasks = [
+            Task { [weak self] in
+                guard let self else { return }
+                for await _ in self.appState.$quotes.values {
+                    if Task.isCancelled { return }
+                    self.updateTitle()
+                }
+            },
+            Task { [weak self] in
+                guard let self else { return }
+                for await _ in self.appState.$stocks.values {
+                    if Task.isCancelled { return }
+                    self.updateTitle()
+                }
+            }
+        ]
+    }
+
+    private func stopTitleUpdates() {
+        titleUpdateTasks.forEach { $0.cancel() }
+        titleUpdateTasks = []
+    }
+
     private func updateTitle() {
-        let titleStocks = appState.stocks.filter { $0.showInTitle ?? false }
+        let titleStocks = appState.stocks.filter(\.showInTitle)
         let visibleItems = titleStocks.prefix(6).map { stock -> TitleItem in
             guard let quote = appState.quotes[stock.symbol.cacheKey] else {
                 return TitleItem(text: "--", color: .secondaryLabelColor)
@@ -186,10 +205,6 @@ final class StatusBarController {
         MenuBarPopoverView(
             presentationID: popoverPresentationID,
             appState: appState,
-            openSettings: { [weak self] in
-                self?.closePanel()
-                self?.openSettings()
-            },
             refresh: { [weak self] in
                 guard let self else { return }
                 Task { @MainActor in

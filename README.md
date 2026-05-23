@@ -1,6 +1,6 @@
 # StockMonitorNative
 
-macOS native rewrite of the original Go menu bar stock monitor.
+Native macOS menu bar stock monitor.
 
 ## Scope
 
@@ -9,7 +9,7 @@ macOS native rewrite of the original Go menu bar stock monitor.
 - JSON persistence under `Application Support/StockMonitorNative`.
 - EastMoney quote polling for A shares, Hong Kong stocks, and US stocks.
 - Sina supplemental quote support for US pre-market/after-hours prices.
-- Rule engine compatible with the Go expressions: `3%`, `+3%`, `-3%`, `9+`, `9-`, `+3`, `-3`, `|3%`, `|+3%`, `|-3%`.
+- Rule engine compatible with the legacy expressions: `3%`, `+3%`, `-3%`, `9+`, `9-`, `+3`, `-3`, `|3%`, `|+3%`, `|-3%`.
 - System notifications with URL open behavior.
 
 The WebView/screenshot chart feature is intentionally not included.

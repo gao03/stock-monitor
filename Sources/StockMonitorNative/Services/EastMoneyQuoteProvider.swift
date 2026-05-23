@@ -41,6 +41,21 @@ public struct EastMoneyQuoteProvider: QuoteProvider {
         let apiResponse = try JSONDecoder().decode(EastMoneyAPIResponse.self, from: data)
         let rows = apiResponse.data?.diff ?? []
         let requestedByCode = Dictionary(grouping: requestedSymbols, by: { normalizedStockCode($0.code) })
+        var exactRequests: [StockSymbol: StockSymbol] = [:]
+        var codeOnlyRequests: [String: StockSymbol] = [:]
+        for symbol in requestedSymbols {
+            let normalizedCode = normalizedStockCode(symbol.code)
+            if let market = symbol.market {
+                let lookupSymbol = StockSymbol(code: normalizedCode, market: market)
+                if exactRequests[lookupSymbol] == nil {
+                    exactRequests[lookupSymbol] = symbol
+                }
+            } else {
+                if codeOnlyRequests[normalizedCode] == nil {
+                    codeOnlyRequests[normalizedCode] = symbol
+                }
+            }
+        }
         var quotes: [StockSymbol: StockQuote] = [:]
 
         for row in rows {
@@ -86,9 +101,12 @@ public struct EastMoneyQuoteProvider: QuoteProvider {
             }
 
             let normalizedCode = normalizedStockCode(code)
-            if let exactRequest = requestedSymbols.first(where: { normalizedStockCode($0.code) == normalizedCode && $0.market == market }) {
+            let normalizedSymbol = StockSymbol(code: normalizedCode, market: market)
+            if let exactRequest = exactRequests[normalizedSymbol] {
+                quote.symbol = exactRequest
                 quotes[exactRequest] = quote
-            } else if let firstCodeOnlyRequest = requestedSymbols.first(where: { normalizedStockCode($0.code) == normalizedCode && $0.market == nil }) {
+            } else if let firstCodeOnlyRequest = codeOnlyRequests[normalizedCode] {
+                quote.symbol = firstCodeOnlyRequest
                 quotes[firstCodeOnlyRequest] = quote
             } else {
                 quotes[symbol] = quote

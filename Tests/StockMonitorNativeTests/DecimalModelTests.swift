@@ -3,6 +3,20 @@ import XCTest
 @testable import StockMonitorNative
 
 final class DecimalModelTests: XCTestCase {
+    func testStockSymbolDecodeNormalizesCode() throws {
+        let data = Data("""
+        {
+          "code": " aapl ",
+          "market": 105
+        }
+        """.utf8)
+
+        let symbol = try JSONDecoder().decode(StockSymbol.self, from: data)
+
+        XCTAssertEqual(symbol.code, "AAPL")
+        XCTAssertEqual(symbol.market, .usNASDAQ)
+    }
+
     func testStockQuoteDecodesDecimalFieldsFromNumbersAndStrings() throws {
         let data = Data("""
         {

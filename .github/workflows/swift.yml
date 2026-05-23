@@ -1,0 +1,22 @@
+name: Swift
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build package
+        run: swift build
+
+      - name: Test package
+        run: swift test
+
+      - name: Build Xcode project
+        run: xcodebuild -project StockMonitorNative.xcodeproj -scheme StockMonitorNativeApp -configuration Debug -destination platform=macOS build

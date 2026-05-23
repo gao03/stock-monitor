@@ -23,14 +23,6 @@ public enum NumberFormat {
         return text
     }
 
-    public static func price(_ value: Double) -> String {
-        let rounded3 = String(format: "%.3f", value)
-        if rounded3.hasSuffix("0") {
-            return String(format: "%.2f", value)
-        }
-        return rounded3
-    }
-
     public static func percent(_ value: Decimal) -> String {
         var rounded = value
         var output = Decimal()
@@ -46,9 +38,6 @@ public enum NumberFormat {
         return "\(text).00"
     }
 
-    public static func percent(_ value: Double) -> String {
-        String(format: "%.2f", value)
-    }
 }
 
 public extension Decimal {
@@ -68,16 +57,6 @@ public extension Decimal {
         if self > 0 { return 1 }
         if self < 0 { return -1 }
         return 0
-    }
-}
-
-public extension Double {
-    var formattedPrice: String {
-        NumberFormat.price(self)
-    }
-
-    var formattedPercent: String {
-        "\(NumberFormat.percent(self))%"
     }
 }
 

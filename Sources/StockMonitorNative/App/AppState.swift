@@ -5,15 +5,12 @@ import Combine
 final class AppState: ObservableObject {
     @Published var stocks: [StockConfig] = []
     @Published var quotes: [String: StockQuote] = [:]
-    @Published var operations: [OperationRecord] = []
     @Published var settings: AppSettings
-    @Published var selectedStockID: StockConfig.ID?
     @Published var lastRefresh: Date?
     @Published var lastErrorMessage: String?
 
     let stockStore: StockStore
     let settingsStore: SettingsStore
-    let operationStore: OperationStore
     let quoteEngine: QuoteEngine
     let notificationService: NotificationService
 
@@ -24,24 +21,15 @@ final class AppState: ObservableObject {
     init(
         stockStore: StockStore,
         settingsStore: SettingsStore,
-        operationStore: OperationStore,
         quoteEngine: QuoteEngine,
         notificationService: NotificationService
     ) {
         self.stockStore = stockStore
         self.settingsStore = settingsStore
-        self.operationStore = operationStore
         self.quoteEngine = quoteEngine
         self.notificationService = notificationService
         self.stocks = stockStore.load()
         self.settings = settingsStore.load()
-        self.operations = operationStore.list(limit: 200)
-        self.selectedStockID = stocks.first?.id
-    }
-
-    var selectedStock: StockConfig? {
-        guard let selectedStockID else { return stocks.first }
-        return stocks.first { $0.id == selectedStockID }
     }
 
     func startRefreshing() {
@@ -88,26 +76,13 @@ final class AppState: ObservableObject {
 
     func addStock(_ stock: StockConfig) {
         stocks.append(stock)
-        selectedStockID = stock.id
-        saveStocks(operation: .addStock, stock: stock, description: "添加股票")
+        saveStocks()
     }
 
     func updateStock(_ stock: StockConfig) {
         guard let index = stocks.firstIndex(where: { $0.id == stock.id }) else { return }
         stocks[index] = stock
-        saveStocks(operation: .updateConfig, stock: stock, description: "更新股票配置")
-    }
-
-    func updateSelectedStock(_ stock: StockConfig) {
-        guard let selectedStockID,
-              let index = stocks.firstIndex(where: { $0.id == selectedStockID })
-        else {
-            updateStock(stock)
-            return
-        }
-        stocks[index] = stock
-        self.selectedStockID = stock.id
-        saveStocks(operation: .updateConfig, stock: stock, description: "更新股票配置")
+        saveStocks()
     }
 
     func moveStock(draggedID: StockConfig.ID, to targetID: StockConfig.ID) -> Bool {
@@ -125,29 +100,10 @@ final class AppState: ObservableObject {
         stockStore.save(stocks)
     }
 
-    func deleteSelectedStock() {
-        guard let stock = selectedStock else { return }
+    func deleteStock(_ stock: StockConfig) {
         stocks.removeAll { $0.id == stock.id }
         quotes.removeValue(forKey: stock.symbol.cacheKey)
-        selectedStockID = stocks.first?.id
-        saveStocks(operation: .removeStock, stock: stock, description: "删除股票")
-    }
-
-    func addRule(_ rule: MonitorRule, to stock: StockConfig) {
-        var updated = stock
-        updated.monitorRules.append(rule)
-        updateStock(updated)
-        appendOperation(type: .addMonitor, stock: stock, description: "添加监控规则: \(rule.displayText)")
-    }
-
-    func deleteRules(at offsets: IndexSet, from stock: StockConfig) {
-        var updated = stock
-        let removed = offsets.map { updated.monitorRules[$0].displayText }.joined(separator: ", ")
-        for index in offsets.sorted(by: >) {
-            updated.monitorRules.remove(at: index)
-        }
-        updateStock(updated)
-        appendOperation(type: .removeMonitor, stock: stock, description: "删除监控规则: \(removed)")
+        saveStocks()
     }
 
     func updateSettings(_ next: AppSettings) {
@@ -155,33 +111,15 @@ final class AppState: ObservableObject {
         settingsStore.save(next)
     }
 
-    func clearOperations() {
-        operationStore.clear()
-        operations = []
-    }
-
-    private func saveStocks(operation type: OperationType, stock: StockConfig, description: String) {
+    private func saveStocks() {
         stockStore.save(stocks)
-        appendOperation(type: type, stock: stock, description: description)
-    }
-
-    private func appendOperation(type: OperationType, stock: StockConfig, description: String) {
-        operationStore.append(
-            OperationRecord(
-                type: type,
-                stockCode: stock.symbol.code,
-                stockName: stock.name,
-                detail: description
-            )
-        )
-        operations = operationStore.list(limit: 200)
     }
 
     private func evaluateMonitorRules(using fetchedQuotes: [StockQuote]) {
         guard settings.notificationsEnabled else { return }
 
         let quoteMap = Dictionary(uniqueKeysWithValues: fetchedQuotes.map { ($0.symbol.cacheKey, $0) })
-        for stock in stocks where stock.alertsEnabled {
+        for stock in stocks {
             guard let quote = quoteMap[stock.symbol.cacheKey] else { continue }
 
             for rule in stock.monitorRules where ruleEngine.isTriggered(

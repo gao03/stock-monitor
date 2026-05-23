@@ -72,10 +72,22 @@ public final class JSONFileStore<Value: Codable & Sendable> {
 
     public func save(_ value: Value) throws {
         let data = try encoder.encode(value)
+        let directoryURL = fileURL.deletingLastPathComponent()
+        try fileManager.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true
+        )
         try data.write(to: fileURL, options: [.atomic])
     }
 
     public func clear() throws {
         try save(defaultValue)
+    }
+}
+
+extension JSONFileStore {
+    static func temporary(fileName: String, defaultValue: Value) -> JSONFileStore<Value> {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        return JSONFileStore(fileURL: url, defaultValue: defaultValue)
     }
 }

@@ -8,19 +8,30 @@ public struct QuoteEngine: Sendable {
     }
 
     public func fetchQuotes(for stocks: [StockConfig]) async throws -> [StockQuote] {
-        guard let provider = providers.first else { return [] }
-        let symbols = stocks.map(\.symbol)
-        let quoteMap = try await provider.quotes(for: symbols)
-        return stocks.compactMap { stock in
-            quoteMap[stock.symbol]
+        guard !providers.isEmpty else { return [] }
+
+        var quotesBySymbol: [StockSymbol: StockQuote] = [:]
+        var remainingSymbols = stocks.map(\.symbol)
+        var lastError: Error?
+
+        for provider in providers where !remainingSymbols.isEmpty {
+            do {
+                let quoteMap = try await provider.quotes(for: remainingSymbols)
+                quotesBySymbol.merge(quoteMap) { current, _ in current }
+                remainingSymbols.removeAll { quoteMap[$0] != nil }
+            } catch {
+                lastError = error
+            }
         }
-    }
-}
 
-public struct LongbridgeQuoteProviderPlaceholder: QuoteProvider {
-    public init() {}
+        if quotesBySymbol.isEmpty, let lastError {
+            throw lastError
+        }
 
-    public func quotes(for symbols: [StockSymbol]) async throws -> [StockSymbol: StockQuote] {
-        [:]
+        return stocks.compactMap { stock in
+            guard var quote = quotesBySymbol[stock.symbol] else { return nil }
+            quote.symbol = stock.symbol
+            return quote
+        }
     }
 }

@@ -6,7 +6,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var refreshInterval: TimeInterval
     public var duplicateAlertInterval: TimeInterval
     public var returnToCostAlertInterval: TimeInterval
-    public var autoStartMonitoring: Bool
     public var updatedAt: Date
 
     public init(
@@ -15,7 +14,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         refreshInterval: TimeInterval = 2,
         duplicateAlertInterval: TimeInterval = 5 * 60,
         returnToCostAlertInterval: TimeInterval = 10 * 60 * 60,
-        autoStartMonitoring: Bool = true,
         updatedAt: Date = Date()
     ) {
         self.notificationsEnabled = notificationsEnabled
@@ -23,7 +21,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.refreshInterval = refreshInterval
         self.duplicateAlertInterval = duplicateAlertInterval
         self.returnToCostAlertInterval = returnToCostAlertInterval
-        self.autoStartMonitoring = autoStartMonitoring
         self.updatedAt = updatedAt
     }
 }
@@ -35,8 +32,8 @@ public final class SettingsStore {
         if let store {
             self.store = store
         } else {
-            self.store = (try? JSONFileStore(fileName: "settings.json", defaultValue: AppSettings())) ?? JSONFileStore(
-                fileURL: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("StockMonitorNative-settings.json"),
+            self.store = (try? JSONFileStore(fileName: "settings.json", defaultValue: AppSettings())) ?? .temporary(
+                fileName: "StockMonitorNative-settings.json",
                 defaultValue: AppSettings()
             )
         }
