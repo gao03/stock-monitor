@@ -21,11 +21,6 @@ struct MenuBarPopoverView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                tabBar
-                    .padding(.horizontal, 12)
-                    .padding(.top, 10)
-                    .padding(.bottom, 4)
-
                 Group {
                     switch selectedTab {
                     case .quotes:
@@ -64,31 +59,6 @@ struct MenuBarPopoverView: View {
                 }
             )
         }
-    }
-
-    private var tabBar: some View {
-        HStack(spacing: 4) {
-            popoverTabButton(.quotes, title: "行情", systemImage: "chart.line.uptrend.xyaxis")
-            popoverTabButton(.settings, title: "配置", systemImage: "gearshape")
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func popoverTabButton(_ tab: PopoverTab, title: String, systemImage: String) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.14)) {
-                selectedTab = tab
-                actionStockID = nil
-            }
-        } label: {
-            Label(title, systemImage: systemImage)
-                .labelStyle(.titleAndIcon)
-                .font(.system(size: 11, weight: .semibold))
-                .padding(.horizontal, 10)
-                .frame(height: 24)
-        }
-        .buttonStyle(PopoverTabButtonStyle(isSelected: selectedTab == tab))
-        .focusable(false)
     }
 
     private var stockList: some View {
@@ -158,12 +128,8 @@ struct MenuBarPopoverView: View {
 
             Spacer(minLength: 8)
 
-            footerButton(selectedTab == .settings ? "行情" : "配置", systemImage: selectedTab == .settings ? "chart.line.uptrend.xyaxis" : "gearshape") {
-                withAnimation(.easeOut(duration: 0.14)) {
-                    selectedTab = selectedTab == .settings ? .quotes : .settings
-                    actionStockID = nil
-                }
-            }
+            footerTabButton(.quotes, title: "行情", systemImage: "chart.line.uptrend.xyaxis")
+            footerTabButton(.settings, title: "配置", systemImage: "gearshape")
             footerButton("刷新", systemImage: "arrow.clockwise", action: refresh)
             footerButton("退出", systemImage: "power", action: quit)
         }
@@ -196,13 +162,27 @@ struct MenuBarPopoverView: View {
         return PanelPalette.secondaryText
     }
 
-    private func footerButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func footerTabButton(_ tab: PopoverTab, title: String, systemImage: String) -> some View {
+        footerButton(title, systemImage: systemImage, isActive: selectedTab == tab) {
+            withAnimation(.easeOut(duration: 0.14)) {
+                selectedTab = tab
+                actionStockID = nil
+            }
+        }
+    }
+
+    private func footerButton(
+        _ title: String,
+        systemImage: String,
+        isActive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 11, weight: .semibold))
                 .frame(width: 24, height: 24)
         }
-        .buttonStyle(PopoverFooterButtonStyle())
+        .buttonStyle(PopoverFooterButtonStyle(isActive: isActive))
         .focusable(false)
         .help(title)
         .accessibilityLabel(Text(title))
@@ -797,38 +777,34 @@ private struct EmptyPopoverState: View {
 }
 
 private struct PopoverFooterButtonStyle: ButtonStyle {
+    let isActive: Bool
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundStyle(PanelPalette.primaryText.opacity(configuration.isPressed ? 0.70 : 0.92))
+            .foregroundStyle(foreground(isPressed: configuration.isPressed))
             .background {
                 Circle()
-                    .fill(configuration.isPressed ? PanelPalette.footerButtonPressed : PanelPalette.footerButtonBackground)
+                    .fill(background(isPressed: configuration.isPressed))
                     .shadow(color: PanelPalette.footerButtonShadow, radius: 4, x: 0, y: 1)
             }
             .overlay {
                 Circle()
-                    .stroke(PanelPalette.footerButtonBorder, lineWidth: 1)
+                    .stroke(isActive ? PanelPalette.footerButtonActiveBorder : PanelPalette.footerButtonBorder, lineWidth: 1)
             }
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
             .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
     }
-}
 
-private struct PopoverTabButtonStyle: ButtonStyle {
-    let isSelected: Bool
+    private func foreground(isPressed: Bool) -> Color {
+        let base = isActive ? PanelPalette.footerButtonActiveText : PanelPalette.primaryText
+        return base.opacity(isPressed ? 0.70 : 0.92)
+    }
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(isSelected ? PanelPalette.primaryText : PanelPalette.secondaryText)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? PanelPalette.tabSelectedBackground : PanelPalette.tabBackground)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(isSelected ? PanelPalette.tabSelectedBorder : PanelPalette.buttonBorder, lineWidth: 1)
-            }
-            .opacity(configuration.isPressed ? 0.72 : 1)
+    private func background(isPressed: Bool) -> Color {
+        if isPressed {
+            return PanelPalette.footerButtonPressed
+        }
+        return isActive ? PanelPalette.footerButtonActiveBackground : PanelPalette.footerButtonBackground
     }
 }
 
@@ -919,18 +895,6 @@ private enum PanelPalette {
         light: NSColor(calibratedWhite: 1.0, alpha: 0.26),
         dark: NSColor(calibratedWhite: 1.0, alpha: 0.06)
     )
-    static let tabBackground = adaptive(
-        light: NSColor(calibratedWhite: 1.0, alpha: 0.24),
-        dark: NSColor(calibratedWhite: 1.0, alpha: 0.06)
-    )
-    static let tabSelectedBackground = adaptive(
-        light: NSColor(calibratedWhite: 1.0, alpha: 0.58),
-        dark: NSColor(calibratedWhite: 1.0, alpha: 0.13)
-    )
-    static let tabSelectedBorder = adaptive(
-        light: NSColor(calibratedWhite: 1.0, alpha: 0.56),
-        dark: NSColor(calibratedWhite: 1.0, alpha: 0.18)
-    )
     static let buttonBackground = adaptive(
         light: NSColor(calibratedWhite: 1.0, alpha: 0.44),
         dark: NSColor(calibratedWhite: 1.0, alpha: 0.12)
@@ -946,6 +910,18 @@ private enum PanelPalette {
     static let footerButtonBackground = adaptive(
         light: NSColor(calibratedWhite: 1.0, alpha: 0.78),
         dark: NSColor(calibratedWhite: 0.0, alpha: 0.38)
+    )
+    static let footerButtonActiveBackground = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.94),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.16)
+    )
+    static let footerButtonActiveBorder = adaptive(
+        light: NSColor(calibratedWhite: 0.0, alpha: 0.18),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.28)
+    )
+    static let footerButtonActiveText = adaptive(
+        light: NSColor(calibratedWhite: 0.0, alpha: 0.92),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.96)
     )
     static let footerButtonPressed = adaptive(
         light: NSColor(calibratedWhite: 1.0, alpha: 0.92),
