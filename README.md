@@ -1,32 +1,26 @@
-## 截图
-![img.png](img.png)
+# StockMonitorNative
 
-## 功能说明
+macOS native rewrite of the original Go menu bar stock monitor.
 
+## Scope
 
-## 配置说明
+- Native status bar app with `NSStatusItem`.
+- SwiftUI menu bar popover for quotes, stock rules, and core configuration.
+- JSON persistence under `Application Support/StockMonitorNative`.
+- EastMoney quote polling for A shares, Hong Kong stocks, and US stocks.
+- Sina supplemental quote support for US pre-market/after-hours prices.
+- Rule engine compatible with the Go expressions: `3%`, `+3%`, `-3%`, `9+`, `9-`, `+3`, `-3`, `|3%`, `|+3%`, `|-3%`.
+- System notifications with URL open behavior.
 
-| 字段                |   类型   | 是否必填 |   示例   |                      说明                       |
-|-------------------|:------:|:----:|:------:|:---------------------------------------------:|
-| code              | string |  是   | 000001 |                     股票代码                      |
-| type              |  int   |  否   |   1    | 股票类型<br/>0-深A, 1-沪A, 105-美股1, 106-美股2, 116-港股 |
-| cost              |  int   |  否   |   1    |                     持仓成本                      |
-| position          |  int   |  否   |  100   |                     持仓数量                      |
-| name              | string |  否   |  上证指数  |                     股票名称                      |   
-| showInTitle       |  bool  |  否   |  true  |               是否展示在菜单栏，默认 true                |
-| enableRealTimePic |  bool  |  否   |  true  |             是否启用实时信息图片，默认 false。              |
+The WebView/screenshot chart feature is intentionally not included.
 
-示例：
-```json
-[
-  {
-    "code": "000001",
-    "type": 1,
-    "cost": 0,
-    "position": 0,
-    "name": "上证指数",
-    "showInTitle": true,
-    "enableRealTimePic": true
-  }
-]
+## Build
+
+```bash
+swift build
+swift run StockMonitorNative
 ```
+
+This project targets macOS 14+. A matching Xcode/Command Line Tools installation is required.
+
+When launched with `swift run`, the app runs as an unbundled executable. System notifications are disabled in that mode because `UNUserNotificationCenter` requires an app bundle identity. Notifications are enabled when the app is packaged as a `.app`.
