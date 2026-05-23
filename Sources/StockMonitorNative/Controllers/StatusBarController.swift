@@ -8,6 +8,7 @@ final class StatusBarController {
     private let statusItem: NSStatusItem
     private let panelSize = NSSize(width: 360, height: 360)
     private var panel: StatusPanel?
+    private var popoverPresentationID = UUID()
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
 
@@ -135,27 +136,6 @@ final class StatusBarController {
         panel.hasShadow = true
         panel.animationBehavior = .default
         panel.collectionBehavior = [.moveToActiveSpace, .transient, .ignoresCycle]
-        panel.contentViewController = NSHostingController(
-            rootView: MenuBarPopoverView(
-                appState: appState,
-                openSettings: { [weak self] in
-                    self?.closePanel()
-                    self?.openSettings()
-                },
-                refresh: { [weak self] in
-                    guard let self else { return }
-                    Task { @MainActor in
-                        await self.appState.refreshOnce()
-                    }
-                },
-                quit: {
-                    NSApp.terminate(nil)
-                },
-                openStock: { symbol in
-                    NSWorkspace.shared.open(XueqiuURLBuilder.url(for: symbol))
-                }
-            )
-        )
         self.panel = panel
     }
 
@@ -169,6 +149,9 @@ final class StatusBarController {
 
     private func showPanel() {
         guard let panel, let button = statusItem.button else { return }
+        popoverPresentationID = UUID()
+        panel.contentViewController = nil
+        panel.contentViewController = NSHostingController(rootView: makePopoverView())
         panel.setFrame(panelFrame(relativeTo: button), display: true)
         NSApplication.shared.activate(ignoringOtherApps: true)
         panel.setIsVisible(true)
@@ -177,7 +160,8 @@ final class StatusBarController {
     }
 
     private func closePanel() {
-        panel?.setIsVisible(false)
+        panel?.orderOut(nil)
+        panel?.contentViewController = nil
         removeEventMonitors()
     }
 
@@ -196,6 +180,29 @@ final class StatusBarController {
         )
         let y = buttonWindowFrame.minY - panelSize.height - 2
         return NSRect(x: x, y: y, width: panelSize.width, height: panelSize.height)
+    }
+
+    private func makePopoverView() -> MenuBarPopoverView {
+        MenuBarPopoverView(
+            presentationID: popoverPresentationID,
+            appState: appState,
+            openSettings: { [weak self] in
+                self?.closePanel()
+                self?.openSettings()
+            },
+            refresh: { [weak self] in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.appState.refreshOnce()
+                }
+            },
+            quit: {
+                NSApp.terminate(nil)
+            },
+            openStock: { symbol in
+                NSWorkspace.shared.open(XueqiuURLBuilder.url(for: symbol))
+            }
+        )
     }
 
     private func installEventMonitors() {

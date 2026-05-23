@@ -1,7 +1,9 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MenuBarPopoverView: View {
+    let presentationID: UUID
     @ObservedObject var appState: AppState
     let openSettings: () -> Void
     let refresh: () -> Void
@@ -10,6 +12,9 @@ struct MenuBarPopoverView: View {
 
     @State private var ruleTarget: RuleTarget?
     @State private var actionStockID: StockConfig.ID?
+    @State private var draggingStockID: StockConfig.ID?
+    @State private var dropTargetID: StockConfig.ID?
+    @State private var didReorderDuringDrag = false
     @State private var selectedTab: PopoverTab = .quotes
 
     var body: some View {
@@ -26,13 +31,7 @@ struct MenuBarPopoverView: View {
                     case .quotes:
                         stockList
                     case .settings:
-                        PopoverSettingsView(
-                            appState: appState,
-                            editRules: { stock in
-                                ruleTarget = RuleTarget(stock: stock)
-                            },
-                            deleteStock: deleteStock
-                        )
+                        PopoverSettingsView(appState: appState)
                     }
                 }
 
@@ -50,7 +49,9 @@ struct MenuBarPopoverView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(PanelPalette.panelBorder, lineWidth: 1)
         }
+        .id(presentationID)
         .foregroundStyle(PanelPalette.primaryText)
+        .onAppear(perform: resetTransientState)
         .sheet(item: $ruleTarget) { target in
             EditMonitorRuleSheet(
                 stock: target.stock,
@@ -111,6 +112,25 @@ struct MenuBarPopoverView: View {
                                 .stroke(PanelPalette.sectionBorder(isExpanded: isExpanded), lineWidth: 1)
                         }
                         .padding(.horizontal, 8)
+                        .opacity(draggingStockID == stock.id ? 0.48 : 1)
+                        .onDrag {
+                            draggingStockID = stock.id
+                            dropTargetID = nil
+                            didReorderDuringDrag = false
+                            actionStockID = nil
+                            return NSItemProvider(object: stock.id as NSString)
+                        }
+                        .onDrop(
+                            of: [.plainText],
+                            delegate: StockDropDelegate(
+                                targetStock: stock,
+                                appState: appState,
+                                draggingStockID: $draggingStockID,
+                                dropTargetID: $dropTargetID,
+                                didReorderDuringDrag: $didReorderDuringDrag,
+                                actionStockID: $actionStockID
+                            )
+                        )
                     }
                 }
             }
@@ -128,8 +148,11 @@ struct MenuBarPopoverView: View {
 
             Spacer(minLength: 8)
 
-            footerTabButton(.quotes, title: "行情", systemImage: "chart.line.uptrend.xyaxis")
-            footerTabButton(.settings, title: "配置", systemImage: "gearshape")
+            if selectedTab == .quotes {
+                footerTabButton(.settings, title: "设置", systemImage: "gearshape")
+            } else {
+                footerTabButton(.quotes, title: "行情", systemImage: "chart.line.uptrend.xyaxis")
+            }
             footerButton("刷新", systemImage: "arrow.clockwise", action: refresh)
             footerButton("退出", systemImage: "power", action: quit)
         }
@@ -163,7 +186,7 @@ struct MenuBarPopoverView: View {
     }
 
     private func footerTabButton(_ tab: PopoverTab, title: String, systemImage: String) -> some View {
-        footerButton(title, systemImage: systemImage, isActive: selectedTab == tab) {
+        footerButton(title, systemImage: systemImage) {
             withAnimation(.easeOut(duration: 0.14)) {
                 selectedTab = tab
                 actionStockID = nil
@@ -205,6 +228,15 @@ struct MenuBarPopoverView: View {
         appState.deleteSelectedStock()
     }
 
+    private func resetTransientState() {
+        ruleTarget = nil
+        actionStockID = nil
+        draggingStockID = nil
+        dropTargetID = nil
+        didReorderDuringDrag = false
+        selectedTab = .quotes
+    }
+
     private struct RuleTarget: Identifiable {
         let stock: StockConfig
         var id: StockConfig.ID { stock.id }
@@ -213,6 +245,46 @@ struct MenuBarPopoverView: View {
     private enum PopoverTab {
         case quotes
         case settings
+    }
+}
+
+private struct StockDropDelegate: DropDelegate {
+    let targetStock: StockConfig
+    let appState: AppState
+    @Binding var draggingStockID: StockConfig.ID?
+    @Binding var dropTargetID: StockConfig.ID?
+    @Binding var didReorderDuringDrag: Bool
+    @Binding var actionStockID: StockConfig.ID?
+
+    func dropEntered(info: DropInfo) {
+        guard let draggingStockID,
+              draggingStockID != targetStock.id,
+              dropTargetID != targetStock.id
+        else { return }
+
+        dropTargetID = targetStock.id
+        if appState.moveStock(draggedID: draggingStockID, to: targetStock.id) {
+            didReorderDuringDrag = true
+            actionStockID = nil
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let shouldSave = didReorderDuringDrag
+        draggingStockID = nil
+        dropTargetID = nil
+        didReorderDuringDrag = false
+        actionStockID = nil
+        if shouldSave {
+            Task { @MainActor in
+                appState.saveStockOrder()
+            }
+        }
+        return true
     }
 }
 
@@ -315,14 +387,11 @@ private struct EditMonitorRuleSheet: View {
 
 private struct PopoverSettingsView: View {
     @ObservedObject var appState: AppState
-    let editRules: (StockConfig) -> Void
-    let deleteStock: (StockConfig) -> Void
 
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
                 globalSettings
-                stockSettings
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
@@ -358,39 +427,6 @@ private struct PopoverSettingsView: View {
                     step: 1
                 )
                 .labelsHidden()
-            }
-        }
-        .settingsSectionBackground()
-    }
-
-    private var stockSettings: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            SettingsSectionTitle(title: "股票", systemImage: "chart.line.uptrend.xyaxis")
-
-            if appState.stocks.isEmpty {
-                Text("暂无股票")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(PanelPalette.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
-            } else {
-                ForEach(appState.stocks) { stock in
-                    PopoverStockSettingsRow(
-                        stock: stock,
-                        toggleMenuBar: {
-                            update(stock) { $0.showInTitle = !($0.showInTitle ?? false) }
-                        },
-                        toggleAlerts: {
-                            update(stock) { $0.alertsEnabled.toggle() }
-                        },
-                        editRules: {
-                            editRules(stock)
-                        },
-                        deleteStock: {
-                            deleteStock(stock)
-                        }
-                    )
-                }
             }
         }
         .settingsSectionBackground()
@@ -437,76 +473,6 @@ private struct PopoverSettingsView: View {
                 appState.updateSettings(next)
             }
         )
-    }
-
-    private func update(_ stock: StockConfig, mutate: (inout StockConfig) -> Void) {
-        guard var current = appState.stocks.first(where: { $0.id == stock.id }) else { return }
-        mutate(&current)
-        appState.updateStock(current)
-    }
-}
-
-private struct PopoverStockSettingsRow: View {
-    let stock: StockConfig
-    let toggleMenuBar: () -> Void
-    let toggleAlerts: () -> Void
-    let editRules: () -> Void
-    let deleteStock: () -> Void
-
-    var body: some View {
-        VStack(spacing: 7) {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(stock.displayName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(PanelPalette.primaryText)
-                        .lineLimit(1)
-
-                    Text(stock.symbol.code)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(PanelPalette.secondaryText)
-                }
-
-                Spacer()
-
-                miniAction(
-                    title: (stock.showInTitle ?? false) ? "菜单栏" : "隐藏",
-                    systemImage: "menubar.rectangle",
-                    action: toggleMenuBar
-                )
-                miniAction(
-                    title: stock.alertsEnabled ? "通知" : "静默",
-                    systemImage: stock.alertsEnabled ? "bell" : "bell.slash",
-                    action: toggleAlerts
-                )
-            }
-
-            HStack(spacing: 7) {
-                miniAction(title: "规则", systemImage: "slider.horizontal.3", action: editRules)
-                miniAction(title: "删除", systemImage: "trash", isDestructive: true, action: deleteStock)
-            }
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 8)
-        .background(PanelPalette.settingRowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-    }
-
-    private func miniAction(
-        title: String,
-        systemImage: String,
-        isDestructive: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .labelStyle(.titleAndIcon)
-                .font(.system(size: 10, weight: .semibold))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(PopoverMiniButtonStyle(isDestructive: isDestructive))
-        .focusable(false)
     }
 }
 
@@ -808,28 +774,6 @@ private struct PopoverFooterButtonStyle: ButtonStyle {
     }
 }
 
-private struct PopoverMiniButtonStyle: ButtonStyle {
-    let isDestructive: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 7)
-            .frame(height: 23)
-            .foregroundStyle(foreground(isPressed: configuration.isPressed))
-            .background(configuration.isPressed ? PanelPalette.buttonPressed : PanelPalette.buttonBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(PanelPalette.buttonBorder, lineWidth: 1)
-            }
-    }
-
-    private func foreground(isPressed: Bool) -> Color {
-        let base = isDestructive ? PanelPalette.upText : PanelPalette.primaryText
-        return base.opacity(isPressed ? 0.68 : 0.90)
-    }
-}
-
 private struct PopoverActionButtonStyle: ButtonStyle {
     let isDestructive: Bool
 
@@ -890,10 +834,6 @@ private enum PanelPalette {
     static let settingSectionBackground = adaptive(
         light: NSColor(calibratedWhite: 0.86, alpha: 0.46),
         dark: NSColor(calibratedWhite: 1.0, alpha: 0.08)
-    )
-    static let settingRowBackground = adaptive(
-        light: NSColor(calibratedWhite: 1.0, alpha: 0.26),
-        dark: NSColor(calibratedWhite: 1.0, alpha: 0.06)
     )
     static let buttonBackground = adaptive(
         light: NSColor(calibratedWhite: 1.0, alpha: 0.44),

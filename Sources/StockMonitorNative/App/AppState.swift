@@ -110,6 +110,21 @@ final class AppState: ObservableObject {
         saveStocks(operation: .updateConfig, stock: stock, description: "更新股票配置")
     }
 
+    func moveStock(draggedID: StockConfig.ID, to targetID: StockConfig.ID) -> Bool {
+        guard draggedID != targetID,
+              let sourceIndex = stocks.firstIndex(where: { $0.id == draggedID }),
+              let targetIndex = stocks.firstIndex(where: { $0.id == targetID })
+        else { return false }
+
+        let stock = stocks.remove(at: sourceIndex)
+        stocks.insert(stock, at: min(targetIndex, stocks.count))
+        return true
+    }
+
+    func saveStockOrder() {
+        stockStore.save(stocks)
+    }
+
     func deleteSelectedStock() {
         guard let stock = selectedStock else { return }
         stocks.removeAll { $0.id == stock.id }
