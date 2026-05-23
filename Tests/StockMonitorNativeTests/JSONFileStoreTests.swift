@@ -20,4 +20,23 @@ final class JSONFileStoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
         XCTAssertEqual(try store.load().refreshInterval, 7)
     }
+
+    func testAppSettingsDecodeStatusBarTextColorMode() throws {
+        let json = """
+        {
+          "notificationsEnabled": true,
+          "soundEnabled": true,
+          "refreshInterval": 2,
+          "duplicateAlertInterval": 300,
+          "returnToCostAlertInterval": 36000,
+          "statusBarTextColorMode": "black",
+          "updatedAt": 0
+        }
+        """
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+
+        XCTAssertEqual(settings.statusBarTextColorMode, .black)
+        XCTAssertEqual(settings.notificationsEnabled, true)
+    }
 }

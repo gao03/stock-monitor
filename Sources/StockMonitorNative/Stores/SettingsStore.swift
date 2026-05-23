@@ -6,6 +6,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var refreshInterval: TimeInterval
     public var duplicateAlertInterval: TimeInterval
     public var returnToCostAlertInterval: TimeInterval
+    public var statusBarTextColorMode: StatusBarTextColorMode
     public var updatedAt: Date
 
     public init(
@@ -14,6 +15,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         refreshInterval: TimeInterval = 2,
         duplicateAlertInterval: TimeInterval = 5 * 60,
         returnToCostAlertInterval: TimeInterval = 10 * 60 * 60,
+        statusBarTextColorMode: StatusBarTextColorMode = .redUpGreenDown,
         updatedAt: Date = Date()
     ) {
         self.notificationsEnabled = notificationsEnabled
@@ -21,7 +23,28 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.refreshInterval = refreshInterval
         self.duplicateAlertInterval = duplicateAlertInterval
         self.returnToCostAlertInterval = returnToCostAlertInterval
+        self.statusBarTextColorMode = statusBarTextColorMode
         self.updatedAt = updatedAt
+    }
+
+}
+
+public enum StatusBarTextColorMode: String, Codable, CaseIterable, Identifiable, Sendable {
+    case redUpGreenDown
+    case greenUpRedDown
+    case black
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .redUpGreenDown:
+            return "红涨绿跌"
+        case .greenUpRedDown:
+            return "绿涨红跌"
+        case .black:
+            return "黑色"
+        }
     }
 }
 

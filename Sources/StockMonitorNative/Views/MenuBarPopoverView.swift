@@ -592,6 +592,34 @@ enum PanelPalette {
         light: NSColor(calibratedWhite: 0.86, alpha: 0.46),
         dark: NSColor(calibratedWhite: 1.0, alpha: 0.08)
     )
+    static let settingRowBackground = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.26),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.06)
+    )
+    static let settingRowSeparator = adaptive(
+        light: NSColor(calibratedWhite: 0.0, alpha: 0.08),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.08)
+    )
+    static let settingControlTrack = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.26),
+        dark: NSColor(calibratedWhite: 0.0, alpha: 0.22)
+    )
+    static let settingControlBorder = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.32),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.08)
+    )
+    static let settingControlSelectedBackground = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.62),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.16)
+    )
+    static let settingControlSelectedText = adaptive(
+        light: NSColor(calibratedWhite: 0.0, alpha: 0.82),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.94)
+    )
+    static let settingControlPressed = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.52),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.12)
+    )
     static let buttonBackground = adaptive(
         light: NSColor(calibratedWhite: 1.0, alpha: 0.44),
         dark: NSColor(calibratedWhite: 1.0, alpha: 0.12)

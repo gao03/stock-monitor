@@ -49,6 +49,13 @@ final class StatusBarController {
                     if Task.isCancelled { return }
                     self.updateTitle()
                 }
+            },
+            Task { [weak self] in
+                guard let self else { return }
+                for await _ in self.appState.$settings.values {
+                    if Task.isCancelled { return }
+                    self.updateTitle()
+                }
             }
         ]
     }
@@ -62,7 +69,7 @@ final class StatusBarController {
         let titleStocks = appState.stocks.filter(\.showInTitle)
         let visibleItems = titleStocks.prefix(6).map { stock -> TitleItem in
             guard let quote = appState.quotes[stock.symbol.cacheKey] else {
-                return TitleItem(text: "--", color: .secondaryLabelColor)
+                return TitleItem(text: "--", color: titleSecondaryColor)
             }
             return TitleItem(
                 text: quote.price.formattedPrice,
@@ -73,8 +80,8 @@ final class StatusBarController {
         guard !visibleItems.isEmpty else {
             statusItem.button?.attributedTitle = statusTitle(
                 rows: [
-                    [TitleItem(text: "Stock", color: .labelColor)],
-                    [TitleItem(text: "Monitor", color: .secondaryLabelColor)]
+                    [TitleItem(text: "Stock", color: titleNeutralColor)],
+                    [TitleItem(text: "Monitor", color: titleSecondaryColor)]
                 ]
             )
             return
@@ -270,9 +277,25 @@ final class StatusBarController {
     }
 
     private func titleColor(for changePercent: Decimal) -> NSColor {
-        if changePercent > 0 { return .systemRed }
-        if changePercent < 0 { return .systemGreen }
+        switch appState.settings.statusBarTextColorMode {
+        case .black:
+            return .black
+        case .redUpGreenDown:
+            if changePercent > 0 { return .systemRed }
+            if changePercent < 0 { return .systemGreen }
+        case .greenUpRedDown:
+            if changePercent > 0 { return .systemGreen }
+            if changePercent < 0 { return .systemRed }
+        }
         return .labelColor
+    }
+
+    private var titleNeutralColor: NSColor {
+        appState.settings.statusBarTextColorMode == .black ? .black : .labelColor
+    }
+
+    private var titleSecondaryColor: NSColor {
+        appState.settings.statusBarTextColorMode == .black ? .black : .secondaryLabelColor
     }
 
     private struct TitleItem {

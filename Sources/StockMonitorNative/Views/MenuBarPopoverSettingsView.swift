@@ -102,8 +102,10 @@ struct PopoverSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 8) {
-                globalSettings
+            VStack(spacing: 10) {
+                statusBarSettings
+                notificationSettings
+                refreshSettings
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
@@ -111,58 +113,57 @@ struct PopoverSettingsView: View {
         .background(PanelPalette.listBackground)
     }
 
-    private var globalSettings: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            SettingsSectionTitle(title: "全局", systemImage: "slider.horizontal.3")
-
-            settingsToggle("启用通知", systemImage: "bell", isOn: settingsBinding(\.notificationsEnabled))
-            settingsToggle("提示音", systemImage: "speaker.wave.2", isOn: settingsBinding(\.soundEnabled))
-
-            SettingsStepperRow(
-                title: "刷新",
-                systemImage: "arrow.clockwise",
-                valueText: "\(Int(appState.settings.refreshInterval)) 秒"
-            ) {
-                Stepper("", value: settingsBinding(\.refreshInterval), in: 2...60, step: 1)
-                    .labelsHidden()
-            }
-
-            SettingsStepperRow(
-                title: "重复提醒",
-                systemImage: "bell.badge",
-                valueText: "\(Int(appState.settings.duplicateAlertInterval / 60)) 分钟"
-            ) {
-                Stepper(
-                    "",
-                    value: settingsBinding(\.duplicateAlertInterval, scale: 60),
-                    in: 1...120,
-                    step: 1
-                )
-                .labelsHidden()
-            }
+    private var statusBarSettings: some View {
+        SettingsModule(title: "状态栏", systemImage: "menubar.rectangle") {
+            SettingsSegmentedRow(
+                title: "文字颜色",
+                systemImage: "paintpalette",
+                selection: statusBarTextColorModeBinding,
+                options: StatusBarTextColorMode.allCases,
+                displayName: \.displayName
+            )
         }
-        .settingsSectionBackground()
     }
 
-    private func settingsToggle(_ title: String, systemImage: String, isOn: Binding<Bool>) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .semibold))
-                .frame(width: 16)
-                .foregroundStyle(PanelPalette.tertiaryText)
+    private var notificationSettings: some View {
+        SettingsModule(title: "通知", systemImage: "bell.badge") {
+            SettingsToggleRow(title: "启用通知", systemImage: "bell", isOn: settingsBinding(\.notificationsEnabled))
+            SettingsToggleRow(title: "提示音", systemImage: "speaker.wave.2", isOn: settingsBinding(\.soundEnabled))
 
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(PanelPalette.primaryText)
+            SettingsIncrementRow(
+                title: "重复提醒",
+                systemImage: "repeat",
+                valueText: "\(Int(appState.settings.duplicateAlertInterval / 60)) 分钟",
+                canDecrement: appState.settings.duplicateAlertInterval > 60,
+                canIncrement: appState.settings.duplicateAlertInterval < 120 * 60,
+                decrement: { adjustInterval(\.duplicateAlertInterval, by: -60, range: 60...(120 * 60)) },
+                increment: { adjustInterval(\.duplicateAlertInterval, by: 60, range: 60...(120 * 60)) }
+            )
 
-            Spacer()
-
-            Toggle("", isOn: isOn)
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .controlSize(.small)
+            SettingsIncrementRow(
+                title: "回本提醒",
+                systemImage: "scope",
+                valueText: "\(Int(appState.settings.returnToCostAlertInterval / 3600)) 小时",
+                canDecrement: appState.settings.returnToCostAlertInterval > 3600,
+                canIncrement: appState.settings.returnToCostAlertInterval < 24 * 3600,
+                decrement: { adjustInterval(\.returnToCostAlertInterval, by: -3600, range: 3600...(24 * 3600)) },
+                increment: { adjustInterval(\.returnToCostAlertInterval, by: 3600, range: 3600...(24 * 3600)) }
+            )
         }
-        .frame(height: 24)
+    }
+
+    private var refreshSettings: some View {
+        SettingsModule(title: "行情", systemImage: "arrow.clockwise") {
+            SettingsIncrementRow(
+                title: "刷新间隔",
+                systemImage: "timer",
+                valueText: "\(Int(appState.settings.refreshInterval)) 秒",
+                canDecrement: appState.settings.refreshInterval > 2,
+                canIncrement: appState.settings.refreshInterval < 60,
+                decrement: { adjustInterval(\.refreshInterval, by: -1, range: 2...60) },
+                increment: { adjustInterval(\.refreshInterval, by: 1, range: 2...60) }
+            )
+        }
     }
 
     private func settingsBinding(_ keyPath: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
@@ -176,35 +177,55 @@ struct PopoverSettingsView: View {
         )
     }
 
-    private func settingsBinding(_ keyPath: WritableKeyPath<AppSettings, TimeInterval>, scale: TimeInterval = 1) -> Binding<Double> {
+    private func adjustInterval(
+        _ keyPath: WritableKeyPath<AppSettings, TimeInterval>,
+        by delta: TimeInterval,
+        range: ClosedRange<TimeInterval>
+    ) {
+        var next = appState.settings
+        let value = next[keyPath: keyPath] + delta
+        next[keyPath: keyPath] = min(max(value, range.lowerBound), range.upperBound)
+        appState.updateSettings(next)
+    }
+
+    private var statusBarTextColorModeBinding: Binding<StatusBarTextColorMode> {
         Binding(
-            get: { appState.settings[keyPath: keyPath] / scale },
+            get: { appState.settings.statusBarTextColorMode },
             set: { value in
                 var next = appState.settings
-                next[keyPath: keyPath] = value * scale
+                next.statusBarTextColorMode = value
                 appState.updateSettings(next)
             }
         )
     }
 }
 
-private struct SettingsSectionTitle: View {
+private struct SettingsModule<Content: View>: View {
     let title: String
     let systemImage: String
+    @ViewBuilder var content: () -> Content
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(PanelPalette.primaryText)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(PanelPalette.primaryText)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .settingsSectionBackground()
     }
 }
 
-private struct SettingsStepperRow<Control: View>: View {
+private struct SettingsRowBase<Accessory: View>: View {
     let title: String
     let systemImage: String
-    let valueText: String
-    @ViewBuilder var control: () -> Control
+    var height: CGFloat = 32
+    @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
         HStack(spacing: 8) {
@@ -219,13 +240,185 @@ private struct SettingsStepperRow<Control: View>: View {
 
             Spacer()
 
+            accessory()
+        }
+        .frame(height: height)
+        .padding(.horizontal, 8)
+        .background(PanelPalette.settingRowBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(PanelPalette.settingRowSeparator)
+                .frame(height: 1)
+                .padding(.leading, 32)
+        }
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    let systemImage: String
+    let isOn: Binding<Bool>
+
+    var body: some View {
+        SettingsRowBase(title: title, systemImage: systemImage) {
+            Toggle("", isOn: isOn)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+    }
+}
+
+private struct SettingsSegmentedRow<Option: Identifiable & Hashable>: View where Option.ID == String {
+    let title: String
+    let systemImage: String
+    let selection: Binding<Option>
+    let options: [Option]
+    let displayName: (Option) -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 16)
+                    .foregroundStyle(PanelPalette.tertiaryText)
+
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(PanelPalette.primaryText)
+                    .lineLimit(1)
+
+                Spacer()
+            }
+
+            HStack(spacing: 2) {
+                ForEach(options) { option in
+                    Button {
+                        selection.wrappedValue = option
+                    } label: {
+                        Text(displayName(option))
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SettingsSegmentButtonStyle(isSelected: selection.wrappedValue == option))
+                    .focusable(false)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(2)
+            .background(PanelPalette.settingControlTrack)
+            .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(PanelPalette.settingControlBorder, lineWidth: 1)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .background(PanelPalette.settingRowBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(PanelPalette.settingRowSeparator)
+                .frame(height: 1)
+                .padding(.leading, 32)
+        }
+    }
+}
+
+private struct SettingsIncrementRow: View {
+    let title: String
+    let systemImage: String
+    let valueText: String
+    let canDecrement: Bool
+    let canIncrement: Bool
+    let decrement: () -> Void
+    let increment: () -> Void
+
+    var body: some View {
+        SettingsRowBase(title: title, systemImage: systemImage, height: 34) {
             Text(valueText)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(PanelPalette.secondaryText)
+                .frame(minWidth: 54, alignment: .trailing)
 
-            control()
+            HStack(spacing: 1) {
+                Button(action: decrement) {
+                    Image(systemName: "minus")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 21, height: 20)
+                }
+                .buttonStyle(SettingsControlButtonStyle(isEnabled: canDecrement))
+                .disabled(!canDecrement)
+                .focusable(false)
+
+                Button(action: increment) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 21, height: 20)
+                }
+                .buttonStyle(SettingsControlButtonStyle(isEnabled: canIncrement))
+                .disabled(!canIncrement)
+                .focusable(false)
+            }
+            .padding(2)
+            .background(PanelPalette.settingControlTrack)
+            .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(PanelPalette.settingControlBorder, lineWidth: 1)
+            }
         }
-        .frame(height: 24)
+    }
+}
+
+private struct SettingsSegmentButtonStyle: ButtonStyle {
+    let isSelected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 7)
+            .frame(height: 22)
+            .foregroundStyle(foreground(isPressed: configuration.isPressed))
+            .background(background(isPressed: configuration.isPressed))
+            .clipShape(Capsule())
+            .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: isSelected)
+    }
+
+    private func foreground(isPressed: Bool) -> Color {
+        let base = isSelected ? PanelPalette.settingControlSelectedText : PanelPalette.secondaryText
+        return base.opacity(isPressed ? 0.68 : 0.94)
+    }
+
+    private func background(isPressed: Bool) -> Color {
+        if isPressed {
+            return PanelPalette.settingControlPressed
+        }
+        return isSelected ? PanelPalette.settingControlSelectedBackground : Color.clear
+    }
+}
+
+private struct SettingsControlButtonStyle: ButtonStyle {
+    let isEnabled: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(foreground(isPressed: configuration.isPressed))
+            .background(background(isPressed: configuration.isPressed))
+            .clipShape(Circle())
+            .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
+    }
+
+    private func foreground(isPressed: Bool) -> Color {
+        guard isEnabled else { return PanelPalette.tertiaryText.opacity(0.34) }
+        return PanelPalette.primaryText.opacity(isPressed ? 0.62 : 0.86)
+    }
+
+    private func background(isPressed: Bool) -> Color {
+        guard isEnabled else { return Color.clear }
+        return isPressed ? PanelPalette.settingControlPressed : Color.clear
     }
 }
 
