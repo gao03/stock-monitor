@@ -37,6 +37,22 @@ final class QuoteEngineTests: XCTestCase {
         }
     }
 
+    func testLookupStockUsesLookupProviders() async throws {
+        let symbol = StockSymbol(code: "AAPL", market: .usNASDAQ)
+        let expected = StockLookupResult(
+            stock: StockConfig(symbol: symbol, name: "Apple"),
+            quote: quote(for: symbol, price: 100)
+        )
+        let engine = QuoteEngine(providers: [
+            StubQuoteProvider(),
+            StubLookupProvider(result: expected)
+        ])
+
+        let result = try await engine.lookupStock(code: "aapl")
+
+        XCTAssertEqual(result, expected)
+    }
+
     private func quote(for symbol: StockSymbol, price: Decimal) -> StockQuote {
         StockQuote(
             symbol: symbol,
@@ -66,5 +82,17 @@ private struct StubQuoteProvider: QuoteProvider {
         return symbols.reduce(into: [:]) { result, symbol in
             result[symbol] = quotes[symbol]
         }
+    }
+}
+
+private struct StubLookupProvider: StockLookupProvider {
+    var result: StockLookupResult?
+
+    func lookupStock(code: String) async throws -> StockLookupResult? {
+        result
+    }
+
+    func quotes(for symbols: [StockSymbol]) async throws -> [StockSymbol: StockQuote] {
+        [:]
     }
 }

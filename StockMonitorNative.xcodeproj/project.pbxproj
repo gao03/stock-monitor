@@ -103,6 +103,22 @@
 			isa = PBXBuildFile;
 			fileRef = B00000000000000000000006;
 		};
+		C00000000000000000000002 = {
+			isa = PBXBuildFile;
+			fileRef = C00000000000000000000001;
+		};
+		C00000000000000000000004 = {
+			isa = PBXBuildFile;
+			fileRef = C00000000000000000000003;
+		};
+		C00000000000000000000006 = {
+			isa = PBXBuildFile;
+			fileRef = C00000000000000000000005;
+		};
+		C00000000000000000000008 = {
+			isa = PBXBuildFile;
+			fileRef = C00000000000000000000007;
+		};
 		A0000000000000000000003C = {
 			isa = PBXBuildFile;
 			fileRef = A00000000000000000000039;
@@ -287,6 +303,30 @@
 			path = QuoteEngineTests.swift;
 			sourceTree = "<group>";
 		};
+		C00000000000000000000001 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = LongbridgeBridgeModels.swift;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000003 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = LongbridgeBridgeClient.swift;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000005 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = LongbridgeQuoteMapper.swift;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000007 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = LongbridgeQuoteMapperTests.swift;
+			sourceTree = "<group>";
+		};
 		A00000000000000000000039 = {
 			isa = PBXFileReference;
 			explicitFileType = archive.ar;
@@ -358,6 +398,7 @@
 		A0000000000000000000000F = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000001,
 				A0000000000000000000000B,
 				A0000000000000000000000D,
 			);
@@ -370,6 +411,8 @@
 			children = (
 				A00000000000000000000010,
 				A00000000000000000000014,
+				C00000000000000000000003,
+				C00000000000000000000005,
 				A00000000000000000000016,
 				A00000000000000000000018,
 				A0000000000000000000001A,
@@ -443,6 +486,7 @@
 				A00000000000000000000037,
 				B00000000000000000000004,
 				B00000000000000000000006,
+				C00000000000000000000007,
 			);
 			name = StockMonitorNativeTests;
 			path = StockMonitorNativeTests;
@@ -595,8 +639,11 @@
 				A00000000000000000000009,
 				A0000000000000000000000C,
 				A0000000000000000000000E,
+				C00000000000000000000002,
 				A00000000000000000000011,
 				A00000000000000000000015,
+				C00000000000000000000004,
+				C00000000000000000000006,
 				A00000000000000000000017,
 				A00000000000000000000019,
 				A0000000000000000000001B,
@@ -628,6 +675,7 @@
 				A00000000000000000000038,
 				B00000000000000000000003,
 				B00000000000000000000005,
+				C00000000000000000000008,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -15,6 +15,7 @@ struct MenuBarPopoverView: View {
     @State private var dropTargetID: StockConfig.ID?
     @State private var didReorderDuringDrag = false
     @State private var selectedTab: PopoverTab = .quotes
+    @State private var isAddStockPresented = false
 
     var body: some View {
         ZStack {
@@ -59,10 +60,16 @@ struct MenuBarPopoverView: View {
                 }
             )
         }
+        .sheet(isPresented: $isAddStockPresented) {
+            AddStockSheet { code, showInMenuBar in
+                _ = try await appState.addStock(code: code, showInTitle: showInMenuBar)
+                selectedTab = .quotes
+            }
+        }
     }
 
     private var stockList: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 7) {
                 if appState.stocks.isEmpty {
                     EmptyPopoverState()
@@ -145,16 +152,47 @@ struct MenuBarPopoverView: View {
                 .foregroundStyle(statusColor)
                 .lineLimit(1)
 
+            if appState.lastErrorMessage?.isEmpty != false {
+                QuoteSourceBadge(status: quoteSourceStatus)
+            }
+
             Spacer(minLength: 8)
 
+            footerButton("添加股票", systemImage: "plus", action: presentAddStock)
             if selectedTab == .quotes {
                 footerTabButton(.settings, title: "设置", systemImage: "gearshape")
             } else {
                 footerTabButton(.quotes, title: "行情", systemImage: "chart.line.uptrend.xyaxis")
             }
-            footerButton("刷新", systemImage: "arrow.clockwise", action: refresh)
+            footerButton(
+                refreshButtonTitle,
+                systemImage: refreshButtonSystemImage,
+                action: refreshButtonAction
+            )
             footerButton("退出", systemImage: "power", action: quit)
         }
+    }
+
+    private var refreshButtonTitle: String {
+        appState.settings.longbridgeEnabled ? "重启 sidecar" : "刷新"
+    }
+
+    private var refreshButtonSystemImage: String {
+        appState.settings.longbridgeEnabled ? "arrow.triangle.2.circlepath" : "arrow.clockwise"
+    }
+
+    private func refreshButtonAction() {
+        if appState.settings.longbridgeEnabled {
+            appState.restartLongbridgeSidecar()
+        } else {
+            refresh()
+        }
+    }
+
+    private func presentAddStock() {
+        actionStockID = nil
+        selectedTab = .quotes
+        isAddStockPresented = true
     }
 
     private var updateStatus: String {
@@ -182,6 +220,26 @@ struct MenuBarPopoverView: View {
             return PanelPalette.upText.opacity(0.95)
         }
         return PanelPalette.secondaryText
+    }
+
+    private var quoteSourceStatus: QuoteSourceStatus {
+        if appState.settings.longbridgeEnabled {
+            let visibleStocks = appState.stocks.filter { $0.symbol.longbridgeSymbol != nil }
+            let streamingCount = visibleStocks.filter {
+                appState.quotes[$0.symbol.cacheKey]?.session == .streaming
+            }.count
+            if !visibleStocks.isEmpty, streamingCount == visibleStocks.count {
+                return .longbridge
+            }
+            if streamingCount > 0 {
+                return .partialLongbridge
+            }
+        }
+        if appState.settings.longbridgeEnabled,
+           !appState.settings.longbridgeClientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .pollingFallback
+        }
+        return .polling
     }
 
     private func footerTabButton(_ tab: PopoverTab, title: String, systemImage: String) -> some View {
@@ -243,6 +301,147 @@ struct MenuBarPopoverView: View {
     private enum PopoverTab {
         case quotes
         case settings
+    }
+}
+
+private struct AddStockSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isCodeFocused: Bool
+
+    let addStock: @MainActor (String, Bool) async throws -> Void
+
+    @State private var code = ""
+    @State private var showInMenuBar = true
+    @State private var errorMessage: String?
+    @State private var isSaving = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("添加股票")
+                    .font(.headline)
+                Text("输入代码后自动查询名称和市场")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            TextField("AAPL / 700 / 000001", text: $code)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(.body, design: .monospaced))
+                .focused($isCodeFocused)
+                .disabled(isSaving)
+                .onSubmit(submit)
+                .onChange(of: code) { _, _ in
+                    errorMessage = nil
+                }
+
+            Toggle("展示在菜单栏", isOn: $showInMenuBar)
+                .toggleStyle(.checkbox)
+                .disabled(isSaving)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            HStack {
+                Spacer()
+                Button("取消") {
+                    dismiss()
+                }
+                .disabled(isSaving)
+
+                Button(isSaving ? "查询中" : "添加") {
+                    submit()
+                }
+                .disabled(!canSubmit)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(18)
+        .frame(width: 340)
+        .onAppear {
+            showInMenuBar = true
+            isCodeFocused = true
+        }
+    }
+
+    private var canSubmit: Bool {
+        !isSaving && !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func submit() {
+        let nextCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !nextCode.isEmpty else {
+            errorMessage = "请输入股票代码"
+            return
+        }
+
+        isSaving = true
+        errorMessage = nil
+        Task { @MainActor in
+            do {
+                try await addStock(nextCode, showInMenuBar)
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+                isSaving = false
+            }
+        }
+    }
+}
+
+private enum QuoteSourceStatus {
+    case longbridge
+    case partialLongbridge
+    case pollingFallback
+    case polling
+
+    var title: String {
+        switch self {
+        case .longbridge:
+            return "长桥推送"
+        case .partialLongbridge:
+            return "部分推送"
+        case .pollingFallback:
+            return "轮询备份"
+        case .polling:
+            return "轮询"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .longbridge:
+            return PanelPalette.sourceLongbridge
+        case .partialLongbridge:
+            return PanelPalette.sourceFallback
+        case .pollingFallback:
+            return PanelPalette.sourceFallback
+        case .polling:
+            return PanelPalette.sourcePolling
+        }
+    }
+}
+
+private struct QuoteSourceBadge: View {
+    let status: QuoteSourceStatus
+
+    var body: some View {
+        Text(status.title)
+            .font(.system(size: 10, weight: .semibold))
+            .lineLimit(1)
+            .foregroundStyle(status.color)
+            .padding(.horizontal, 6)
+            .frame(height: 18)
+            .background(PanelPalette.sourceBadgeBackground)
+            .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(status.color.opacity(0.20), lineWidth: 1)
+            }
+            .help("当前行情来源")
     }
 }
 
@@ -576,6 +775,22 @@ enum PanelPalette {
     static let tertiaryText = Color(nsColor: .tertiaryLabelColor)
     static let upText = Color(nsColor: .systemRed)
     static let downText = Color(nsColor: .systemGreen)
+    static let sourceLongbridge = adaptive(
+        light: NSColor(calibratedRed: 0.08, green: 0.38, blue: 0.66, alpha: 0.96),
+        dark: NSColor(calibratedRed: 0.42, green: 0.74, blue: 1.0, alpha: 0.92)
+    )
+    static let sourceFallback = adaptive(
+        light: NSColor(calibratedRed: 0.56, green: 0.36, blue: 0.04, alpha: 0.90),
+        dark: NSColor(calibratedRed: 1.0, green: 0.72, blue: 0.28, alpha: 0.88)
+    )
+    static let sourcePolling = adaptive(
+        light: NSColor(calibratedWhite: 0.0, alpha: 0.44),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.54)
+    )
+    static let sourceBadgeBackground = adaptive(
+        light: NSColor(calibratedWhite: 1.0, alpha: 0.30),
+        dark: NSColor(calibratedWhite: 1.0, alpha: 0.08)
+    )
     static let ruleLabelText = adaptive(
         light: NSColor(calibratedWhite: 0.0, alpha: 0.54),
         dark: NSColor(calibratedWhite: 1.0, alpha: 0.68)

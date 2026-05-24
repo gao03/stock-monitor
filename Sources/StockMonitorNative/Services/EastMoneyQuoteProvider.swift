@@ -1,45 +1,48 @@
 import Foundation
 
-public struct EastMoneyQuoteProvider: QuoteProvider {
+public struct EastMoneyQuoteProvider: StockLookupProvider {
     public var session: URLSession
     public var afterHoursProvider: SinaAfterHoursQuoteProvider?
     public var includesUSAfterHoursSupplement: Bool
+    private let dateProvider: @Sendable () -> Date
+    private let movingAverageCache = DailyMovingAverageCache()
 
     public init(
         session: URLSession = .shared,
         afterHoursProvider: SinaAfterHoursQuoteProvider? = SinaAfterHoursQuoteProvider(),
-        includesUSAfterHoursSupplement: Bool = true
+        includesUSAfterHoursSupplement: Bool = true,
+        dateProvider: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.session = session
         self.afterHoursProvider = afterHoursProvider
         self.includesUSAfterHoursSupplement = includesUSAfterHoursSupplement
+        self.dateProvider = dateProvider
+    }
+
+    public func lookupStock(code rawCode: String) async throws -> StockLookupResult? {
+        let lookupSymbol = StockSymbol(code: rawCode)
+        guard !lookupSymbol.code.isEmpty else { return nil }
+
+        let rows = try await fetchRows(for: [lookupSymbol])
+        for row in rows {
+            guard let quote = await quote(from: row),
+                  normalizedStockCode(quote.symbol.code) == lookupSymbol.code
+            else {
+                continue
+            }
+
+            let stock = StockConfig(symbol: quote.symbol, name: quote.name)
+            return StockLookupResult(stock: stock, quote: quote)
+        }
+
+        return nil
     }
 
     public func quotes(for symbols: [StockSymbol]) async throws -> [StockSymbol: StockQuote] {
         let requestedSymbols = symbols.filter { !$0.code.isEmpty }
         guard !requestedSymbols.isEmpty else { return [:] }
 
-        let secids = requestedSymbols.flatMap(\.candidateEastMoneySecIDs).joined(separator: ",")
-        var components = URLComponents(string: "https://push2.eastmoney.com/api/qt/ulist.np/get")
-        components?.queryItems = [
-            URLQueryItem(name: "fields", value: "f2,f3,f12,f13,f14,f15,f16,f17,f18,f232"),
-            URLQueryItem(name: "fltt", value: "2"),
-            URLQueryItem(name: "secids", value: secids)
-        ]
-        guard let url = components?.url else {
-            throw QuoteProviderError.invalidURL
-        }
-
-        let (data, response) = try await session.data(from: url)
-        guard
-            let httpResponse = response as? HTTPURLResponse,
-            200..<300 ~= httpResponse.statusCode
-        else {
-            throw QuoteProviderError.invalidResponse
-        }
-
-        let apiResponse = try JSONDecoder().decode(EastMoneyAPIResponse.self, from: data)
-        let rows = apiResponse.data?.diff ?? []
+        let rows = try await fetchRows(for: requestedSymbols)
         let requestedByCode = Dictionary(grouping: requestedSymbols, by: { normalizedStockCode($0.code) })
         var exactRequests: [StockSymbol: StockSymbol] = [:]
         var codeOnlyRequests: [String: StockSymbol] = [:]
@@ -59,48 +62,13 @@ public struct EastMoneyQuoteProvider: QuoteProvider {
         var quotes: [StockSymbol: StockQuote] = [:]
 
         for row in rows {
-            guard
-                let code = row.code,
-                let marketID = row.marketID,
-                let market = StockMarket(rawValue: marketID),
-                requestedByCode[normalizedStockCode(code)] != nil
-            else {
-                continue
-            }
+            guard var quote = await quote(from: row),
+                  let market = quote.symbol.market
+            else { continue }
 
-            let symbol = StockSymbol(code: code, market: market)
-            var quote = StockQuote(
-                symbol: symbol,
-                name: row.name?.replacingOccurrences(of: " ", with: "") ?? "",
-                price: row.price ?? 0,
-                percentChange: row.percentChange ?? 0,
-                highestPrice: row.highestPrice ?? 0,
-                lowestPrice: row.lowestPrice ?? 0,
-                openPrice: row.openPrice ?? 0,
-                previousClose: row.previousClose ?? 0,
-                underlyingStockCode: row.underlyingStockCode,
-                timestamp: Date(),
-                session: .regular
-            )
+            let normalizedCode = normalizedStockCode(quote.symbol.code)
+            guard requestedByCode[normalizedCode] != nil else { continue }
 
-            if let movingAverages = try? await movingAverages(for: symbol) {
-                quote.ma5 = movingAverages.ma5
-                quote.ma10 = movingAverages.ma10
-                quote.ma20 = movingAverages.ma20
-            }
-
-            if includesUSAfterHoursSupplement,
-               market.isUSMarket,
-               shouldQueryUSAfterHours(),
-               let afterHoursProvider,
-               let supplemental = try? await afterHoursProvider.afterHoursQuote(for: symbol) {
-                quote.price = supplemental.price
-                quote.percentChange = supplemental.percentChange
-                quote.timestamp = supplemental.timestamp
-                quote.session = .supplemental
-            }
-
-            let normalizedCode = normalizedStockCode(code)
             let normalizedSymbol = StockSymbol(code: normalizedCode, market: market)
             if let exactRequest = exactRequests[normalizedSymbol] {
                 quote.symbol = exactRequest
@@ -109,11 +77,79 @@ public struct EastMoneyQuoteProvider: QuoteProvider {
                 quote.symbol = firstCodeOnlyRequest
                 quotes[firstCodeOnlyRequest] = quote
             } else {
-                quotes[symbol] = quote
+                quotes[quote.symbol] = quote
             }
         }
 
         return quotes
+    }
+
+    private func fetchRows(for symbols: [StockSymbol]) async throws -> [EastMoneyQuoteRow] {
+        let secids = symbols.flatMap(\.candidateEastMoneySecIDs).joined(separator: ",")
+        var components = URLComponents(string: "https://push2.eastmoney.com/api/qt/ulist.np/get")
+        components?.queryItems = [
+            URLQueryItem(name: "fields", value: "f2,f3,f12,f13,f14,f15,f16,f17,f18,f232"),
+            URLQueryItem(name: "fltt", value: "2"),
+            URLQueryItem(name: "secids", value: secids)
+        ]
+        guard let url = components?.url else {
+            throw QuoteProviderError.invalidURL
+        }
+
+        let (data, response) = try await session.data(from: url)
+        guard
+            let httpResponse = response as? HTTPURLResponse,
+            200..<300 ~= httpResponse.statusCode
+        else {
+            throw QuoteProviderError.invalidResponse
+        }
+
+        let apiResponse = try JSONDecoder().decode(EastMoneyAPIResponse.self, from: data)
+        return apiResponse.data?.diff ?? []
+    }
+
+    private func quote(from row: EastMoneyQuoteRow) async -> StockQuote? {
+        guard
+            let code = row.code,
+            let marketID = row.marketID,
+            let market = StockMarket(rawValue: marketID)
+        else {
+            return nil
+        }
+
+        let symbol = StockSymbol(code: code, market: market)
+        var quote = StockQuote(
+            symbol: symbol,
+            name: row.name?.replacingOccurrences(of: " ", with: "") ?? "",
+            price: row.price ?? 0,
+            percentChange: row.percentChange ?? 0,
+            highestPrice: row.highestPrice ?? 0,
+            lowestPrice: row.lowestPrice ?? 0,
+            openPrice: row.openPrice ?? 0,
+            previousClose: row.previousClose ?? 0,
+            underlyingStockCode: row.underlyingStockCode,
+            timestamp: Date(),
+            session: .regular
+        )
+
+        if let movingAverages = await movingAverages(for: symbol) {
+            quote.ma5 = movingAverages.ma5
+            quote.ma10 = movingAverages.ma10
+            quote.ma20 = movingAverages.ma20
+        }
+
+        if includesUSAfterHoursSupplement,
+           market.isUSMarket,
+           shouldQueryUSAfterHours(),
+           let afterHoursProvider,
+           let supplemental = try? await afterHoursProvider.afterHoursQuote(for: symbol) {
+            quote.price = supplemental.price
+            quote.percentChange = supplemental.percentChange
+            quote.timestamp = supplemental.timestamp
+            quote.session = .supplemental
+        }
+
+        return quote
     }
 
     public func shouldQueryUSAfterHours(now: Date = Date()) -> Bool {
@@ -138,8 +174,25 @@ public struct EastMoneyQuoteProvider: QuoteProvider {
         TimeZone(identifier: "America/New_York")?.isDaylightSavingTime(for: now) ?? false
     }
 
-    private func movingAverages(for symbol: StockSymbol) async throws -> MovingAverages? {
+    private func movingAverages(for symbol: StockSymbol) async -> MovingAverages? {
         guard let secid = symbol.eastMoneySecID else { return nil }
+        let cacheKey = "\(secid)|\(indicatorDateKey())"
+        if let entry = await movingAverageCache.entry(for: cacheKey) {
+            return entry.value
+        }
+
+        do {
+            let movingAverages = try await fetchMovingAverages(secid: secid)
+            if let movingAverages {
+                await movingAverageCache.store(movingAverages, for: cacheKey)
+            }
+            return movingAverages
+        } catch {
+            return nil
+        }
+    }
+
+    private func fetchMovingAverages(secid: String) async throws -> MovingAverages? {
         var components = URLComponents(string: "https://push2his.eastmoney.com/api/qt/stock/kline/get")
         components?.queryItems = [
             URLQueryItem(name: "fields1", value: "f1,f2,f3,f4,f5,f6"),
@@ -169,6 +222,18 @@ public struct EastMoneyQuoteProvider: QuoteProvider {
             ma5: movingAverage(closes, days: 5),
             ma10: movingAverage(closes, days: 10),
             ma20: movingAverage(closes, days: 20)
+        )
+    }
+
+    private func indicatorDateKey() -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Shanghai") ?? .current
+        let components = calendar.dateComponents([.year, .month, .day], from: dateProvider())
+        return String(
+            format: "%04d-%02d-%02d",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0
         )
     }
 
@@ -253,10 +318,26 @@ private struct EastMoneyKlineData: Decodable {
     var klines: [String]
 }
 
-private struct MovingAverages {
+private struct MovingAverages: Sendable {
     var ma5: Decimal
     var ma10: Decimal
     var ma20: Decimal
+}
+
+private struct MovingAveragesCacheEntry: Sendable {
+    var value: MovingAverages
+}
+
+private actor DailyMovingAverageCache {
+    private var entries: [String: MovingAveragesCacheEntry] = [:]
+
+    func entry(for key: String) -> MovingAveragesCacheEntry? {
+        entries[key]
+    }
+
+    func store(_ value: MovingAverages, for key: String) {
+        entries[key] = MovingAveragesCacheEntry(value: value)
+    }
 }
 
 private extension KeyedDecodingContainer {

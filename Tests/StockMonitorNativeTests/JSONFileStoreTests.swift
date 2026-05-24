@@ -30,6 +30,10 @@ final class JSONFileStoreTests: XCTestCase {
           "duplicateAlertInterval": 300,
           "returnToCostAlertInterval": 36000,
           "statusBarTextColorMode": "black",
+          "longbridgeEnabled": true,
+          "longbridgeClientID": "client-id",
+          "longbridgeRegion": "cn",
+          "longbridgeEnableOvernight": true,
           "updatedAt": 0
         }
         """
@@ -38,5 +42,15 @@ final class JSONFileStoreTests: XCTestCase {
 
         XCTAssertEqual(settings.statusBarTextColorMode, .black)
         XCTAssertEqual(settings.notificationsEnabled, true)
+        XCTAssertEqual(settings.longbridgeClientID, "client-id")
+        XCTAssertEqual(settings.longbridgeRegion, .cn)
+        XCTAssertTrue(settings.longbridgeEnableOvernight)
+    }
+
+    func testStatusBarTextColorOptions() {
+        XCTAssertEqual(
+            StatusBarTextColorMode.allCases.map(\.displayName),
+            ["红涨绿跌", "白色", "黑色"]
+        )
     }
 }

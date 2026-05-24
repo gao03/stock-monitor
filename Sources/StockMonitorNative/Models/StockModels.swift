@@ -279,6 +279,7 @@ public enum QuoteSession: String, Codable, Sendable, Hashable {
     case preMarket
     case afterHours
     case supplemental
+    case streaming
 }
 
 public struct AfterHoursQuote: Codable, Sendable, Hashable {

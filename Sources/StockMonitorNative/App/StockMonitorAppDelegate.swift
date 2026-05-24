@@ -22,7 +22,8 @@ public final class StockMonitorAppDelegate: NSObject, NSApplicationDelegate {
             stockStore: stockStore,
             settingsStore: settingsStore,
             quoteEngine: quoteEngine,
-            notificationService: notificationService
+            notificationService: notificationService,
+            longbridgeClient: LongbridgeBridgeClient()
         )
 
         statusController = StatusBarController(appState: appState)

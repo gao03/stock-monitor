@@ -280,22 +280,35 @@ final class StatusBarController {
         switch appState.settings.statusBarTextColorMode {
         case .black:
             return .black
+        case .white:
+            return .white
         case .redUpGreenDown:
             if changePercent > 0 { return .systemRed }
             if changePercent < 0 { return .systemGreen }
-        case .greenUpRedDown:
-            if changePercent > 0 { return .systemGreen }
-            if changePercent < 0 { return .systemRed }
         }
         return .labelColor
     }
 
     private var titleNeutralColor: NSColor {
-        appState.settings.statusBarTextColorMode == .black ? .black : .labelColor
+        switch appState.settings.statusBarTextColorMode {
+        case .black:
+            return .black
+        case .white:
+            return .white
+        case .redUpGreenDown:
+            return .labelColor
+        }
     }
 
     private var titleSecondaryColor: NSColor {
-        appState.settings.statusBarTextColorMode == .black ? .black : .secondaryLabelColor
+        switch appState.settings.statusBarTextColorMode {
+        case .black:
+            return .black
+        case .white:
+            return .white
+        case .redUpGreenDown:
+            return .secondaryLabelColor
+        }
     }
 
     private struct TitleItem {

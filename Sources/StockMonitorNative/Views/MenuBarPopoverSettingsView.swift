@@ -101,9 +101,10 @@ struct PopoverSettingsView: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             VStack(spacing: 10) {
                 statusBarSettings
+                quoteChannelSettings
                 notificationSettings
                 refreshSettings
             }
@@ -122,6 +123,26 @@ struct PopoverSettingsView: View {
                 options: StatusBarTextColorMode.allCases,
                 displayName: \.displayName
             )
+        }
+    }
+
+    private var quoteChannelSettings: some View {
+        SettingsModule(title: "行情渠道", systemImage: "antenna.radiowaves.left.and.right") {
+            SettingsToggleRow(title: "启用长桥", systemImage: "bolt.horizontal", isOn: settingsBinding(\.longbridgeEnabled))
+            SettingsTextFieldRow(
+                title: "OAuth Client ID",
+                systemImage: "key",
+                placeholder: "your-client-id",
+                text: settingsStringBinding(\.longbridgeClientID)
+            )
+            SettingsSegmentedRow(
+                title: "接入区域",
+                systemImage: "network",
+                selection: longbridgeRegionBinding,
+                options: LongbridgeRegion.allCases,
+                displayName: \.displayName
+            )
+            SettingsToggleRow(title: "夜盘行情", systemImage: "moon", isOn: settingsBinding(\.longbridgeEnableOvernight))
         }
     }
 
@@ -177,6 +198,17 @@ struct PopoverSettingsView: View {
         )
     }
 
+    private func settingsStringBinding(_ keyPath: WritableKeyPath<AppSettings, String>) -> Binding<String> {
+        Binding(
+            get: { appState.settings[keyPath: keyPath] },
+            set: { value in
+                var next = appState.settings
+                next[keyPath: keyPath] = value
+                appState.updateSettings(next)
+            }
+        )
+    }
+
     private func adjustInterval(
         _ keyPath: WritableKeyPath<AppSettings, TimeInterval>,
         by delta: TimeInterval,
@@ -198,6 +230,18 @@ struct PopoverSettingsView: View {
             }
         )
     }
+
+    private var longbridgeRegionBinding: Binding<LongbridgeRegion> {
+        Binding(
+            get: { appState.settings.longbridgeRegion },
+            set: { value in
+                var next = appState.settings
+                next.longbridgeRegion = value
+                appState.updateSettings(next)
+            }
+        )
+    }
+
 }
 
 private struct SettingsModule<Content: View>: View {
@@ -265,6 +309,30 @@ private struct SettingsToggleRow: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+        }
+    }
+}
+
+private struct SettingsTextFieldRow: View {
+    let title: String
+    let systemImage: String
+    let placeholder: String
+    let text: Binding<String>
+
+    var body: some View {
+        SettingsRowBase(title: title, systemImage: systemImage, height: 34) {
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(PanelPalette.primaryText)
+                .padding(.horizontal, 8)
+                .frame(width: 156, height: 24)
+                .background(PanelPalette.settingControlTrack)
+                .clipShape(Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(PanelPalette.settingControlBorder, lineWidth: 1)
+                }
         }
     }
 }

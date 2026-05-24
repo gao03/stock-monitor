@@ -10,6 +10,9 @@
 build/
 tmp/
 DerivedData/
+.cargo-home/
+target/
+rust/**/target/
 
 # Xcode user state
 *.xcodeproj/project.xcworkspace/xcuserdata/

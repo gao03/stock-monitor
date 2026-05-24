@@ -34,4 +34,24 @@ public struct QuoteEngine: Sendable {
             return quote
         }
     }
+
+    public func lookupStock(code: String) async throws -> StockLookupResult? {
+        var lastError: Error?
+
+        for provider in providers {
+            guard let lookupProvider = provider as? any StockLookupProvider else { continue }
+            do {
+                if let result = try await lookupProvider.lookupStock(code: code) {
+                    return result
+                }
+            } catch {
+                lastError = error
+            }
+        }
+
+        if let lastError {
+            throw lastError
+        }
+        return nil
+    }
 }

@@ -7,6 +7,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var duplicateAlertInterval: TimeInterval
     public var returnToCostAlertInterval: TimeInterval
     public var statusBarTextColorMode: StatusBarTextColorMode
+    public var longbridgeEnabled: Bool
+    public var longbridgeClientID: String
+    public var longbridgeRegion: LongbridgeRegion
+    public var longbridgeEnableOvernight: Bool
     public var updatedAt: Date
 
     public init(
@@ -16,6 +20,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
         duplicateAlertInterval: TimeInterval = 5 * 60,
         returnToCostAlertInterval: TimeInterval = 10 * 60 * 60,
         statusBarTextColorMode: StatusBarTextColorMode = .redUpGreenDown,
+        longbridgeEnabled: Bool = false,
+        longbridgeClientID: String = "",
+        longbridgeRegion: LongbridgeRegion = .auto,
+        longbridgeEnableOvernight: Bool = false,
         updatedAt: Date = Date()
     ) {
         self.notificationsEnabled = notificationsEnabled
@@ -24,14 +32,17 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.duplicateAlertInterval = duplicateAlertInterval
         self.returnToCostAlertInterval = returnToCostAlertInterval
         self.statusBarTextColorMode = statusBarTextColorMode
+        self.longbridgeEnabled = longbridgeEnabled
+        self.longbridgeClientID = longbridgeClientID
+        self.longbridgeRegion = longbridgeRegion
+        self.longbridgeEnableOvernight = longbridgeEnableOvernight
         self.updatedAt = updatedAt
     }
-
 }
 
 public enum StatusBarTextColorMode: String, Codable, CaseIterable, Identifiable, Sendable {
     case redUpGreenDown
-    case greenUpRedDown
+    case white
     case black
 
     public var id: String { rawValue }
@@ -40,8 +51,8 @@ public enum StatusBarTextColorMode: String, Codable, CaseIterable, Identifiable,
         switch self {
         case .redUpGreenDown:
             return "红涨绿跌"
-        case .greenUpRedDown:
-            return "绿涨红跌"
+        case .white:
+            return "白色"
         case .black:
             return "黑色"
         }

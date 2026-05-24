@@ -5,6 +5,20 @@ public protocol QuoteProvider: Sendable {
     func quotes(for symbols: [StockSymbol]) async throws -> [StockSymbol: StockQuote]
 }
 
+public struct StockLookupResult: Sendable, Equatable {
+    public var stock: StockConfig
+    public var quote: StockQuote
+
+    public init(stock: StockConfig, quote: StockQuote) {
+        self.stock = stock
+        self.quote = quote
+    }
+}
+
+public protocol StockLookupProvider: QuoteProvider {
+    func lookupStock(code: String) async throws -> StockLookupResult?
+}
+
 public extension QuoteProvider {
     func quote(for symbol: StockSymbol) async throws -> StockQuote? {
         try await quotes(for: [symbol])[symbol]
