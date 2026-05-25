@@ -24,6 +24,7 @@ The Makefile wraps the common development commands:
 ```bash
 make build
 make release
+make package-release
 make run
 make test
 make xcode-test
@@ -39,6 +40,8 @@ places the app at:
 ```text
 .build/xcode-project/Build/Products/Release/StockMonitorNative.app
 ```
+
+`make package-release` also zips that app into `.build/StockMonitorNative-Release.zip`.
 
 The individual commands are still available when you need to run them directly:
 

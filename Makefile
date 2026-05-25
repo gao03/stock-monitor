@@ -7,14 +7,16 @@ RUST_MANIFEST := rust/longbridge-bridge/Cargo.toml
 RUST_PROFILE_DIR = $(if $(filter Release,$(CONFIGURATION)),release,debug)
 APP_BUNDLE = $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)/StockMonitorNative.app
 SIDECAR_BINARY = rust/longbridge-bridge/target/$(RUST_PROFILE_DIR)/longbridge-bridge
+RELEASE_ARCHIVE := .build/StockMonitorNative-Release.zip
 
-.PHONY: help build app release run test xcode-test rust-build rust-release rust-test bundle-sidecar fmt fmt-check clean
+.PHONY: help build app release package-release run test xcode-test rust-build rust-release rust-test bundle-sidecar fmt fmt-check clean
 
 help:
 	@echo "StockMonitorNative build targets:"
 	@echo "  make build       Build Rust sidecar and macOS app"
 	@echo "  make app         Build the macOS app with xcodebuild"
 	@echo "  make release     Build the Release app and bundle the Rust sidecar"
+	@echo "  make package-release Build and zip the Release app"
 	@echo "  make run         Run the SwiftPM executable"
 	@echo "  make test        Run SwiftPM tests"
 	@echo "  make xcode-test  Run the Xcode test action"
@@ -32,6 +34,10 @@ app:
 
 release: CONFIGURATION := Release
 release: rust-release app bundle-sidecar
+
+package-release: CONFIGURATION := Release
+package-release: release
+	ditto -c -k --keepParent '$(APP_BUNDLE)' $(RELEASE_ARCHIVE)
 
 run:
 	swift run StockMonitorNative
