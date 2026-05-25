@@ -35,7 +35,7 @@ jobs:
         run: make package-release
 
       - name: Upload release app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: StockMonitorNative-macos-release
           path: .build/StockMonitorNative-Release.zip
