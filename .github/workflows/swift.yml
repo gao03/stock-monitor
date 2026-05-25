@@ -1,4 +1,4 @@
-name: Swift
+name: CI
 
 on:
   push:
@@ -6,17 +6,30 @@ on:
   pull_request:
     branches: ["main"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  macos:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build package
-        run: swift build
+      - name: Show toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+          cargo --version
 
-      - name: Test package
-        run: swift test
+      - name: Run SwiftPM tests
+        run: make test
 
-      - name: Build Xcode project
-        run: xcodebuild -project StockMonitorNative.xcodeproj -scheme StockMonitorNativeApp -configuration Debug -destination platform=macOS build
+      - name: Run Rust sidecar tests
+        run: make rust-test
+
+      - name: Run Xcode tests
+        run: make xcode-test
+
+      - name: Build release app
+        run: make release

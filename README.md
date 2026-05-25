@@ -19,6 +19,29 @@ The WebView/screenshot chart feature is intentionally not included.
 
 Open `StockMonitorNative.xcodeproj` in Xcode and select the `StockMonitorNativeApp` scheme.
 
+The Makefile wraps the common development commands:
+
+```bash
+make build
+make release
+make run
+make test
+make xcode-test
+make rust-test
+make fmt-check
+```
+
+`make build` builds both the Longbridge Rust sidecar and the macOS app in Debug
+configuration, then bundles the sidecar into the app. `make release` builds the
+Rust sidecar and macOS app in Release configuration, bundles the sidecar, and
+places the app at:
+
+```text
+.build/xcode-project/Build/Products/Release/StockMonitorNative.app
+```
+
+The individual commands are still available when you need to run them directly:
+
 ```bash
 cargo build --manifest-path rust/longbridge-bridge/Cargo.toml
 swift build
@@ -36,3 +59,15 @@ When launched with `swift run`, the app runs as an unbundled executable. System 
 Longbridge realtime quotes require the Rust sidecar binary at
 `rust/longbridge-bridge/target/debug/longbridge-bridge` during development. You
 can override the path with `STOCK_MONITOR_LONGBRIDGE_BRIDGE`.
+
+## Logs
+
+- Xcode runs: use the Xcode debug console.
+- `make run` / `swift run`: logs are printed in the terminal that launched the app.
+- `.app` runs: use Console.app and filter for `StockMonitorNative`, or stream logs from a terminal:
+
+```bash
+log stream --style compact --predicate 'process == "StockMonitorNative"'
+```
+
+The app does not currently write a separate log file. Persistent app data is stored under `~/Library/Application Support/StockMonitorNative`.

@@ -19,7 +19,8 @@ let package = Package(
         .executableTarget(
             name: "StockMonitorNativeApp",
             dependencies: ["StockMonitorNative"],
-            path: "Sources/StockMonitorNativeApp"
+            path: "Sources/StockMonitorNativeApp",
+            exclude: ["Assets.xcassets"]
         ),
         .testTarget(
             name: "StockMonitorNativeTests",
