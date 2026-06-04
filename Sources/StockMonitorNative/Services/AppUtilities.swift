@@ -63,6 +63,7 @@ public extension Decimal {
 public enum XueqiuURLBuilder {
     public static func url(for symbol: StockSymbol) -> URL {
         let prefix = symbol.market?.xueqiuPrefix ?? ""
-        return URL(string: "https://xueqiu.com/S/\(prefix)\(symbol.code)")!
+        let code = symbol.market == .hongKong ? xueqiuHongKongStockCode(symbol.code) : symbol.code
+        return URL(string: "https://xueqiu.com/S/\(prefix)\(code)")!
     }
 }

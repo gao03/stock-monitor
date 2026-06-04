@@ -4,7 +4,8 @@ use anyhow::{anyhow, Context, Result};
 use longbridge::{
     oauth::{FileTokenStorage, OAuthBuilder, OAuthResult, StoredToken, TokenStorage},
     quote::{
-        PrePostQuote, PushEvent, PushEventDetail, PushQuote, QuoteContext, SecurityQuote, SubFlags,
+        PrePostQuote, PushEvent, PushEventDetail, PushQuote, PushTrades, QuoteContext,
+        SecurityQuote, SubFlags,
     },
     Config,
 };
@@ -160,7 +161,7 @@ impl BridgeState {
             return Ok(());
         }
 
-        ctx.subscribe(symbols.iter().map(String::as_str), SubFlags::QUOTE)
+        ctx.subscribe(symbols.iter().map(String::as_str), realtime_quote_flags())
             .await
             .context("longbridge subscribe failed")?;
         self.subscribed_symbols.extend(symbols);
@@ -177,7 +178,7 @@ impl BridgeState {
             return Ok(());
         }
 
-        ctx.unsubscribe(symbols.iter().map(String::as_str), SubFlags::QUOTE)
+        ctx.unsubscribe(symbols.iter().map(String::as_str), realtime_quote_flags())
             .await
             .context("longbridge unsubscribe failed")?;
         for symbol in symbols {
@@ -384,6 +385,10 @@ fn clean_symbols(symbols: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+fn realtime_quote_flags() -> SubFlags {
+    SubFlags::QUOTE | SubFlags::TRADE
+}
+
 fn write_json_line(value: Value) -> Result<()> {
     let mut stdout = std::io::stdout().lock();
     serde_json::to_writer(&mut stdout, &value)?;
@@ -395,6 +400,7 @@ fn write_json_line(value: Value) -> Result<()> {
 fn quote_payload_from_push_event(event: &PushEvent) -> Option<Value> {
     match &event.detail {
         PushEventDetail::Quote(quote) => Some(quote_payload_from_push_quote(&event.symbol, quote)),
+        PushEventDetail::Trade(trades) => Some(quote_payload_from_push_trades(&event.symbol, trades)?),
         _ => None,
     }
 }
@@ -409,6 +415,19 @@ fn quote_payload_from_push_quote(symbol: &str, quote: &PushQuote) -> Value {
         "timestamp": quote.timestamp.unix_timestamp(),
         "trade_session": format!("{:?}", quote.trade_session)
     })
+}
+
+fn quote_payload_from_push_trades(symbol: &str, trades: &PushTrades) -> Option<Value> {
+    let trade = trades
+        .trades
+        .iter()
+        .max_by_key(|trade| trade.timestamp.unix_timestamp())?;
+    Some(json!({
+        "symbol": symbol,
+        "last_done": trade.price.to_string(),
+        "timestamp": trade.timestamp.unix_timestamp(),
+        "trade_session": format!("{:?}", trade.trade_session)
+    }))
 }
 
 fn quote_payload_from_security_quote(quote: &SecurityQuote) -> Value {

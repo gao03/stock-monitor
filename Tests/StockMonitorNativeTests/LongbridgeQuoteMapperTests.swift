@@ -5,8 +5,31 @@ final class LongbridgeQuoteMapperTests: XCTestCase {
     func testStockSymbolBuildsLongbridgeSymbol() {
         XCTAssertEqual(StockSymbol(code: "AAPL", market: .usNASDAQ).longbridgeSymbol, "AAPL.US")
         XCTAssertEqual(StockSymbol(code: "700", market: .hongKong).longbridgeSymbol, "700.HK")
+        XCTAssertEqual(StockSymbol(code: "00700", market: .hongKong).longbridgeSymbol, "700.HK")
+        XCTAssertEqual(StockSymbol(code: "01810", market: .hongKong).longbridgeSymbol, "1810.HK")
         XCTAssertEqual(StockSymbol(code: "000001", market: .shenzhen).longbridgeSymbol, "000001.SZ")
         XCTAssertEqual(StockSymbol(code: "600000", market: .shanghai).longbridgeSymbol, "600000.SH")
+    }
+
+    func testLongbridgeSymbolNormalizerHandlesHongKongLeadingZeros() {
+        XCTAssertEqual(LongbridgeSymbolNormalizer.normalized("01810.HK"), "1810.HK")
+        XCTAssertEqual(LongbridgeSymbolNormalizer.normalized("1810.HK"), "1810.HK")
+        XCTAssertEqual(LongbridgeSymbolNormalizer.normalized("AAPL.US"), "AAPL.US")
+    }
+
+    func testXueqiuURLUsesFiveDigitHongKongCodeWithoutPrefix() {
+        XCTAssertEqual(
+            XueqiuURLBuilder.url(for: StockSymbol(code: "01810", market: .hongKong)).absoluteString,
+            "https://xueqiu.com/S/01810"
+        )
+        XCTAssertEqual(
+            XueqiuURLBuilder.url(for: StockSymbol(code: "1810", market: .hongKong)).absoluteString,
+            "https://xueqiu.com/S/01810"
+        )
+        XCTAssertEqual(
+            XueqiuURLBuilder.url(for: StockSymbol(code: "600000", market: .shanghai)).absoluteString,
+            "https://xueqiu.com/S/SH600000"
+        )
     }
 
     func testMapperKeepsDecimalPrecisionFromStringPayload() {

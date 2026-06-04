@@ -47,7 +47,7 @@ public enum StockMarket: Int, Codable, Sendable, CaseIterable, Hashable {
         case .shanghai:
             return "SH"
         case .hongKong:
-            return "HK"
+            return ""
         case .usNASDAQ, .usNYSE, .usAMEX:
             return ""
         }

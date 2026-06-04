@@ -251,10 +251,6 @@ public struct EastMoneyQuoteProvider: StockLookupProvider {
     }
 }
 
-func normalizedStockCode(_ code: String) -> String {
-    code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-}
-
 func isMinuteOfDay(_ minute: Int, inCrossDayRangeFrom start: Int, to end: Int) -> Bool {
     if start <= end {
         return minute >= start && minute < end

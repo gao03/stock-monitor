@@ -6,7 +6,7 @@ extension StockSymbol {
         guard !normalizedCode.isEmpty else { return nil }
 
         if normalizedCode.contains(".") {
-            return normalizedCode
+            return LongbridgeSymbolNormalizer.normalized(normalizedCode)
         }
 
         guard let market else { return nil }
@@ -16,10 +16,22 @@ extension StockSymbol {
         case .shanghai:
             return "\(normalizedCode).SH"
         case .hongKong:
-            return "\(normalizedCode).HK"
+            return "\(longbridgeHongKongStockCode(normalizedCode)).HK"
         case .usNASDAQ, .usNYSE, .usAMEX:
             return "\(normalizedCode).US"
         }
+    }
+}
+
+enum LongbridgeSymbolNormalizer {
+    static func normalized(_ symbol: String) -> String {
+        let normalizedSymbol = symbol.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard normalizedSymbol.hasSuffix(".HK") else {
+            return normalizedSymbol
+        }
+
+        let code = String(normalizedSymbol.dropLast(3))
+        return "\(longbridgeHongKongStockCode(code)).HK"
     }
 }
 

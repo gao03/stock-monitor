@@ -407,7 +407,7 @@ final class AppState: ObservableObject {
     }
 
     private func stock(forLongbridgeSymbol symbol: String) -> StockConfig? {
-        let normalizedSymbol = symbol.uppercased()
+        let normalizedSymbol = LongbridgeSymbolNormalizer.normalized(symbol)
         return stocks.first { stock in
             stock.symbol.longbridgeSymbol == normalizedSymbol
         }

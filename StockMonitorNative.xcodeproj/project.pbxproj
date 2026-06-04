@@ -123,6 +123,10 @@
 			isa = PBXBuildFile;
 			fileRef = D00000000000000000000002;
 		};
+		E00000000000000000000002 = {
+			isa = PBXBuildFile;
+			fileRef = E00000000000000000000001;
+		};
 		A0000000000000000000003C = {
 			isa = PBXBuildFile;
 			fileRef = A00000000000000000000039;
@@ -331,6 +335,12 @@
 			path = LongbridgeQuoteMapperTests.swift;
 			sourceTree = "<group>";
 		};
+		E00000000000000000000001 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = StockSymbolFormatting.swift;
+			sourceTree = "<group>";
+		};
 		D00000000000000000000002 = {
 			isa = PBXFileReference;
 			lastKnownFileType = folder.assetcatalog;
@@ -411,6 +421,7 @@
 				C00000000000000000000001,
 				A0000000000000000000000B,
 				A0000000000000000000000D,
+				E00000000000000000000001,
 			);
 			name = Models;
 			path = Models;
@@ -653,6 +664,7 @@
 				A0000000000000000000000C,
 				A0000000000000000000000E,
 				C00000000000000000000002,
+				E00000000000000000000002,
 				A00000000000000000000011,
 				A00000000000000000000015,
 				C00000000000000000000004,
