@@ -95,8 +95,9 @@ actor LongbridgeBridgeClient {
             let id = UUID()
             eventContinuations[id] = continuation
             continuation.onTermination = { [weak self] _ in
+                guard let client = self else { return }
                 Task {
-                    await self?.removeEventContinuation(id: id)
+                    await client.removeEventContinuation(id: id)
                 }
             }
         }
@@ -200,8 +201,9 @@ actor LongbridgeBridgeClient {
 
         stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
+            guard let client = self else { return }
             Task {
-                await self?.consumeStdout(data, processToken: processToken)
+                await client.consumeStdout(data, processToken: processToken)
             }
         }
         stderrPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -211,8 +213,9 @@ actor LongbridgeBridgeClient {
             }
         }
         process.terminationHandler = { [weak self] _ in
+            guard let client = self else { return }
             Task {
-                await self?.handleTermination(processToken: processToken)
+                await client.handleTermination(processToken: processToken)
             }
         }
 
