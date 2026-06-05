@@ -9,11 +9,12 @@ APP_BUNDLE = $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)/StockMonitorNative.
 SIDECAR_BINARY = rust/longbridge-bridge/target/$(RUST_PROFILE_DIR)/longbridge-bridge
 RELEASE_ARCHIVE := .build/StockMonitorNative-Release.zip
 
-.PHONY: help build app release package-release run test xcode-test rust-build rust-release rust-test bundle-sidecar fmt fmt-check clean
+.PHONY: help app-icon build app release package-release run test xcode-test rust-build rust-release rust-test bundle-sidecar fmt fmt-check clean
 
 help:
 	@echo "StockMonitorNative build targets:"
 	@echo "  make build       Build Rust sidecar and macOS app"
+	@echo "  make app-icon    Render AppIcon PNGs from assets/app-icon.png"
 	@echo "  make app         Build the macOS app with xcodebuild"
 	@echo "  make release     Build the Release app and bundle the Rust sidecar"
 	@echo "  make package-release Build and zip the Release app"
@@ -28,6 +29,9 @@ help:
 	@echo "  make clean       Remove SwiftPM and Xcode build outputs"
 
 build: rust-build app bundle-sidecar
+
+app-icon:
+	sh scripts/generate_app_icon.sh
 
 app:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(DERIVED_DATA) -destination '$(DESTINATION)' build
