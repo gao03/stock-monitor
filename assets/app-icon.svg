@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <rect width="1024" height="1024" fill="#FCFCFB"/>
 
+  <g transform="translate(28 36)">
   <rect x="72" y="72" width="828" height="846" rx="188" fill="#E7EAEE"/>
   <rect x="58" y="56" width="844" height="858" rx="190" fill="#F1F3F5"/>
   <rect x="72" y="70" width="816" height="830" rx="178" fill="#E1E5EA"/>
@@ -48,4 +49,5 @@
   <circle cx="750" cy="376" r="33" fill="#FFB1AC"/>
   <circle cx="750" cy="376" r="26" fill="#FF2D2D"/>
   <circle cx="742" cy="366" r="10" fill="#FFA49F"/>
+  </g>
 </svg>
