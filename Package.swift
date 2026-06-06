@@ -9,7 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "StockMonitorNativeLibrary", targets: ["StockMonitorNative"]),
-        .executable(name: "StockMonitorNative", targets: ["StockMonitorNativeApp"])
+        .executable(name: "StockMonitor", targets: ["StockMonitorNativeApp"])
     ],
     targets: [
         .target(

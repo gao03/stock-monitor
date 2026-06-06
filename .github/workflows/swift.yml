@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   macos:
     runs-on: macos-14
@@ -37,6 +40,29 @@ jobs:
       - name: Upload release app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StockMonitorNative-macos-release
-          path: .build/StockMonitorNative-Release.zip
+          name: StockMonitor-macos-release
+          path: .build/StockMonitor-Release.zip
           if-no-files-found: error
+
+      - name: Upload release asset
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: latest
+          RELEASE_TITLE: Latest StockMonitor build
+          RELEASE_ARCHIVE: .build/StockMonitor-Release.zip
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --notes "Latest successful main build: $GITHUB_SHA" \
+              --latest
+          else
+            gh release create "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --notes "Latest successful main build: $GITHUB_SHA" \
+              --latest
+          fi
+          gh release upload "$RELEASE_TAG" "$RELEASE_ARCHIVE" --clobber
